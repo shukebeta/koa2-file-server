@@ -18,7 +18,7 @@ const config = {
   allowedSize: +process.env.MAX_FILE_SIZE || 512,
   allowedExt: process.env.ALLOWED_EXT && process.env.ALLOWED_EXT.split(',') || ['.png', '.jpg', '.gif'],
   destPath: path.join(__dirname, process.env.DESTINATION || './static'),
-  fileFieldName: process.env.FILE_FIELD_NAME || 'img',
+  fileFieldName: process.env.FILE_FIELD_NAME || 'file',
   apiPath: process.env.API_URI || '/api/upload',
   saveAsMd5: !!process.env.SAVE_AS_MD5
 }

@@ -54,7 +54,7 @@
             <li>saveAsMd5: true</li>
         </ul>
         <div class="upload">
-            <input type="file" id="file">
+            <input type="file" multiple="multiple" id="file">
             <p>+</p>
         </div>
         <p>Click and upload</p>
@@ -65,19 +65,21 @@
         var $file = document.querySelector('#file');
         $file.addEventListener('change', (e) => {
           document.querySelector('#result').innerText = "uploading..."
-          var file = e.target.files[0];
-            var form = new FormData();
+          var files = e.target.files;
+          var form = new FormData();
+          for (let file of files) {
             form.append('img', file);
-            var request = new XMLHttpRequest();
-            request.open("POST", "/api/upload");
-            request.onreadystatechange = (res) => {
-                if (request.readyState === 4 && request.status === 200) {
-                    document.querySelector('#result').innerText = request.responseText;
-                    // let data = JSON.parse(request.responseText);
+          }
+          var request = new XMLHttpRequest();
+          request.open("POST", "/api/upload");
+          request.onreadystatechange = (res) => {
+            if (request.readyState === 4 && request.status === 200) {
+              document.querySelector('#result').innerText = request.responseText;
+              // let data = JSON.parse(request.responseText);
 
-                }
-            };
-            request.send(form);
+            }
+          };
+          request.send(form);
         });
     </script>
 </body>

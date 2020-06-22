@@ -49,29 +49,33 @@ module.exports = (config = {}) => {
   }
   const doUpload = async (ctx, next) => {
     try {
-      await ctx.upload.single(config.fileFieldName || 'file')(ctx, next)
-      const file = ctx.req.file
-      if (!file) {
+      await ctx.upload.array(config.fileFieldName)(ctx, next)
+      const files = ctx.req.files
+      if (!files) {
         return await next()
       }
-      let fileNameWithPath
-      if (config.saveAsMd5 === true) {
-        const md5Code = md5File.sync(file.path)
-        const extName = path.extname(file.filename)
-        file.filename = `${md5Code}${extName}`
-        fileNameWithPath = path.join(file.destination, file.filename)
-        const stderr = shell.mv(file.path, fileNameWithPath).stderr
-        if (stderr !== null) {
-          throw new Error({
-            code: 'MOVING FILE ERROR',
-            message: stderr
-          })
+      let data = []
+      for(let file of files) {
+        let fileNameWithPath
+        if (config.saveAsMd5 === true) {
+          const md5Code = md5File.sync(file.path)
+          const extName = path.extname(file.filename)
+          file.filename = `${md5Code}${extName}`
+          fileNameWithPath = path.join(file.destination, file.filename)
+          const stderr = shell.mv(file.path, fileNameWithPath).stderr
+          if (stderr !== null) {
+            throw new Error({
+              code: 'MOVING FILE ERROR',
+              message: stderr
+            })
+          }
         }
+        data.push({
+          fileName: file.filename,
+          filePath: file.destination.replace(config.destPath, '')
+        })
       }
-      ctx.body = SuccessResult({
-        fileName: file.filename,
-        filePath: file.destination.replace(config.destPath, '')
-      })
+      ctx.body = SuccessResult(data)
       return false
     } catch (e) {
       switch (e.code) {
@@ -87,8 +91,11 @@ module.exports = (config = {}) => {
           ctx.body = ErrorResult(9113, `File is larger than ${config.allowedSize}KB`)
           break
         }
+        case 'LIMIT_UNEXPECTED_FILE':
+          ctx.body = ErrorResult(9114, `Unexpected fileFieldName: ${config.fileFieldName}`)
+          break
         default:
-          ctx.body = ErrorResult(9114, `${e.name}: ${JSON.stringify(e)}`)
+          ctx.body = ErrorResult(9115, `${e.name}: ${JSON.stringify(e)}`)
       }
     }
   }
