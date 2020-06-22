@@ -1,3 +1,5 @@
+.idea
+fileServer/static
 coverage/
 npm-debug.log
 /node_modules/
