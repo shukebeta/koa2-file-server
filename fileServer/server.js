@@ -11,7 +11,7 @@ app.host = process.env.IP || 'localhost';
 app.port = process.env.PORT || 8000;
 
 app.use(cors({
-  origin: process.env.ORIGIN
+  origin: process.env.ALLOWED_ORIGIN_LIST
 }))
 
 const config = {
