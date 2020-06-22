@@ -1,164 +1,122 @@
-const path = require('path');
-const fs = require('fs');
-const os = require('os');
-const multer = require('koa-multer');
-const shell = require('shelljs');
-const md5File = require('md5-file');
+const path = require('path')
+const multer = require('koa-multer')
+const shell = require('shelljs')
+const md5File = require('md5-file')
+const {SuccessResult, ErrorResult} = require('./ApiResult')
 /**
  * @description simple file upload
  * @param {Object} config - 上传配置项
- * @param {String} config.destPath - 文件存储目录(绝对路径)
+ * @param {String} config.destPath - '/dir' - 一个绝对路径
  * @param {String} [config.apiPath=api/upload] - api路径
  * @param {String[]} [config.allowedExt] - 允许的文件类型列表
  * @param {Number} [config.allowedSize=1024*20] - 允许的文件大小,单位KB
- * @param {Boolean}  [config.cors=false] - 是否允许跨域
- * @param {String[]} [config.corsDomainList] - 跨域域名白名单
- * @param {String} [config.uploadParam="file"] - post字段,默认为file
+ * @param {String} [config.fileFieldName="file"] - post字段,默认为file
  * @param {Boolean} [config.saveAsMd5=false] - 以md5存储文件
- * @param {String} [config.returnPrefix=""] - 返回的文件url路径
- * @param {Function} [config.fnComplete=] - 上传完成后不直接返回，走回调
  */
 module.exports = (config = {}) => {
+  const getHashDir = () => {
+    let getRandInt = () => {
+      return Math.floor(Math.random() * 10)
+    }
+    return `/${getRandInt()}${getRandInt()}/${getRandInt()}${getRandInt()}/`
+  }
+
+  const storage = multer.diskStorage({
+    destination(req, file, callback) {
+      const savePath = config.destPath + getHashDir()
+      const stderr = shell.mkdir('-p', savePath).stderr
+      if (stderr === null) {
+        callback(null, savePath)
+      } else {
+        throw new Error(stderr)
+      }
+    },
+    filename(req, file, cb) {
+      cb(null, file.originalname)
+    }
+  })
+
+  const fileFilter = (req, file, cb) => {
+    let extName = path.extname(file.originalname).toLowerCase()
+    if (config.allowedExt && config.allowedExt.length && config.allowedExt.indexOf(extName) < 0) {
+      cb({
+        code: 'FILE_TYPE_ERROR',
+        message: `only ${config.allowedExt.join(',')} files are allowed to upload.`
+      }, false)
+    } else {
+      cb(null, true)
+    }
+  }
+  const doUpload = async (ctx, next) => {
+    try {
+      await ctx.upload.single(config.fileFieldName || 'file')(ctx, next)
+      const file = ctx.req.file
+      if (!file) {
+        return await next()
+      }
+      let fileNameWithPath
+      if (config.saveAsMd5 === true) {
+        const md5Code = md5File.sync(file.path)
+        const extName = path.extname(file.filename)
+        file.filename = `${md5Code}${extName}`
+        fileNameWithPath = path.join(file.destination, file.filename)
+        const stderr = shell.mv(file.path, fileNameWithPath).stderr
+        if (stderr !== null) {
+          throw new Error({
+            code: 'MOVING FILE ERROR',
+            message: stderr
+          })
+        }
+      }
+      ctx.body = SuccessResult({
+        fileName: file.filename,
+        filePath: file.destination.replace(config.destPath, '')
+      })
+      return false
+    } catch (e) {
+      switch (e.code) {
+        case 'FILE_TYPE_ERROR': {
+          ctx.body = ErrorResult(9111, e.message)
+          break
+        }
+        case 'MOVING_FILE_ERROR': {
+          ctx.body = ErrorResult(9112, `Cannot move file to ${file.destination}`)
+          break
+        }
+        case 'LIMIT_FILE_SIZE': {
+          ctx.body = ErrorResult(9113, `File is larger than ${config.allowedSize}KB`)
+          break
+        }
+        default:
+          ctx.body = ErrorResult(9114, `${e.name}: ${JSON.stringify(e)}`)
+      }
+    }
+  }
   return async (ctx, next) => {
     if (ctx.method !== 'POST') {
-      await next();
-      return false;
-    }
-    const storage = multer.diskStorage({
-      destination(req, file, cb) {
-        if (config.saveAsMd5 === true) {
-          cb(null, os.tmpdir());
-        } else {
-          if (!fs.existsSync(config.destPath)) {
-            shell.mkdir(config.destPath);
-          }
-          cb(null, config.destPath);
-        }
-      },
-      filename(req, file, cb) {
-        const extName = path.extname(file.originalname);
-        if (config.saveAsMd5 === true) {
-            cb(null, Date.now() + extName);
-        } else {
-            cb(null, file.originalname);
-        }
-      }
-    });
-
-    const multerConfig = {
-      fileFilter(req, file, cb) {
-        let extName = path.extname(file.originalname);
-        if (config.allowedExt && config.allowedExt.length) {
-          if (config.allowedExt.indexOf(extName) >= 0) {
-            cb(null, true);
-          } else {
-            cb({
-              code: "FILE_TYPE_ERROR"
-            }, false);
-          }
-        } else {
-          cb(null, true);
-        }
-      },
-      storage
-    };
-
-    if (config.allowedSize) {
-      multerConfig.limits = { fileSize: config.allowedSize * 1000 };
+      await next()
+      return false
     }
 
-    const upload = multer(multerConfig);
-
-    const doUpload = async (ctx, next) => {
-      try {
-        await upload.single(config.uploadParam || 'file')(ctx, next);
-        const file = ctx.req.file;
-        if (!file) {
-          return await next();
-        }
-        let filePath;
-        let retFileName;
-        let absolutePath;
-        let msgObj = {};
-        if (config.saveAsMd5 === true) {
-            try {
-              const md5Code = md5File.sync(file.path);
-              const extName = path.extname(file.filename);
-              const newFileName = `${md5Code}${extName}`;
-              const newFileNamePath = path.join(file.destination, newFileName);
-              shell.mv(file.path, newFileNamePath);
-              absolutePath = newFileNamePath;
-              if (config.destPath && !fs.existsSync(config.destPath)) {
-                shell.mkdir(path.join(config.destPath));
-              }
-              if (config.destPath && fs.existsSync(config.destPath)) {
-                  absolutePath = path.join(config.destPath, newFileName);
-                  shell.mv(newFileNamePath, absolutePath);
-              }
-              retFileName = newFileName;
-              filePath = config.returnPrefix ? config.returnPrefix : '';
-            } catch (e) {
-              msgObj = {
-                status: 3,
-                data: {},
-                msg: 'check md5 failed'
-              };
-              ctx.body = msgObj;
-              return false;
-            }
-        } else {
-          retFileName = file.filename;
-          absolutePath = path.join(file.destination, retFileName);
-          filePath = config.returnPrefix ? config.returnPrefix : '';
-        }
-
-        msgObj = {
-          status: 0,
-          data: {
-            fileName: retFileName,
-            filePath
-          },
-          msg: 'upload success'
-        };
-
-        if (typeof config.fnComplete === 'function') {
-          msgObj.data.absolutePath = absolutePath;
-          ctx.uploadFileInfo = msgObj;
-          await config.fnComplete(ctx, next);
-        } else {
-          ctx.body = msgObj;
-        }
-        return false;
-      } catch (e) {
-          switch (e.code) {
-              case 'FILE_TYPE_ERROR': {
-                  ctx.body = {
-                      status: 1,
-                      msg: 'fileType error'
-                  };
-                  break;
-              }
-              case 'LIMIT_FILE_SIZE': {
-                  ctx.body = {
-                      status: 2,
-                      msg: 'fileSize Exceed'
-                  };
-                  break;
-              }
-          }
+    const mConfig = {
+      fileFilter,
+      storage,
+      limits: {
+        fileSize: config.allowedSize * 1024
       }
-    };
+    }
 
+    ctx.upload = multer(mConfig)
     if (config.apiPath) {
         if (ctx.path === config.apiPath) {
-          await doUpload(ctx, next);
+          await doUpload(ctx, next)
         } else {
-          await next();
-          return false;
+          await next()
+          return false
         }
     } else {
-      await doUpload(ctx, next);
+      await doUpload(ctx, next)
     }
+  }
+}
 
-  };
-};

@@ -26,6 +26,7 @@
   },
   "devDependencies": {
     "coveralls": "^3.0.0",
+    "dotenv": "^8.2.0",
     "form-data": "^2.3.2",
     "istanbul": "^1.1.0-alpha.1",
     "koa-router": "^7.4.0",

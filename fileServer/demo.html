@@ -18,7 +18,7 @@
             text-align: center;
         }
         .upload:hover {
-            border-color: blue; 
+            border-color: blue;
         }
         .upload p {
             font-size: 40px;
@@ -47,11 +47,10 @@
         <h3>config</h3>
         <ul>
             <li>cors: true</li>
-            <li>allowedSize: 80</li>
+            <li>allowedSize: 2048M</li>
             <li>allowedExt: ['.png', '.jpg', '.gif']</li>
             <li>uploadParam: img</li>
             <li>apiPath: /api/upload</li>
-            <li>returnPrefix: /assets/</li>
             <li>saveAsMd5: true</li>
         </ul>
         <div class="upload">
@@ -65,7 +64,8 @@
     <script>
         var $file = document.querySelector('#file');
         $file.addEventListener('change', (e) => {
-            var file = e.target.files[0];
+          document.querySelector('#result').innerText = "uploading..."
+          var file = e.target.files[0];
             var form = new FormData();
             form.append('img', file);
             var request = new XMLHttpRequest();
@@ -74,7 +74,7 @@
                 if (request.readyState === 4 && request.status === 200) {
                     document.querySelector('#result').innerText = request.responseText;
                     // let data = JSON.parse(request.responseText);
-                    
+
                 }
             };
             request.send(form);
