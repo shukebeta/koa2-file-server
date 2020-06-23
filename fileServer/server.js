@@ -1,7 +1,7 @@
 require('dotenv').config()
 const Koa = require('koa');
 const app = new Koa();
-const fileUploader = require('../index.js');
+const fileUploader = require('../fileUploader.js');
 const path = require('path');
 const Router = require('koa-router');
 const router = new Router();
@@ -9,6 +9,8 @@ const open = require("open");
 const cors = require("@koa/cors")
 app.host = process.env.IP || 'localhost';
 app.port = process.env.PORT || 8000;
+
+app.context.db = require('../models/index')
 
 app.use(cors({
   origin: process.env.ALLOWED_ORIGIN_LIST
@@ -36,6 +38,6 @@ app.use(router.routes());
 app.use(router.allowedMethods());
 
 const server = app.listen(app.port, app.host, () => {
-  open(`${app.host}:${app.port}`);
+  open(`http://${app.host}:${app.port}`);
   console.log('Koa server listening on %s:%d', server.address().address, server.address().port);
 });

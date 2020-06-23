@@ -1,4 +1,4 @@
-const fileUploader = require('../index.js');
+const fileUploader = require('../fileUploader.js');
 const path = require('path');
 const _util = require('./_util.js');
 

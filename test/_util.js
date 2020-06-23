@@ -1,5 +1,5 @@
 const Koa = require('koa');
-const fileUploader = require('../index.js');
+const fileUploader = require('../fileUploader.js');
 const path = require('path');
 const request = require('supertest');
 const FormData = require('form-data');

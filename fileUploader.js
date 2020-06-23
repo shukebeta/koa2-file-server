@@ -7,11 +7,10 @@ const {SuccessResult, ErrorResult} = require('./ApiResult')
  * @description simple file upload
  * @param {Object} config - 上传配置项
  * @param {String} config.destPath - '/dir' - 一个绝对路径
- * @param {String} [config.apiPath=api/upload] - api路径
+ * @param {String} [config.apiPath=/api/upload] - api路径
  * @param {String[]} [config.allowedExt] - 允许的文件类型列表
  * @param {Number} [config.allowedSize=1024*20] - 允许的文件大小,单位KB
  * @param {String} [config.fileFieldName="file"] - post字段,默认为file
- * @param {Boolean} [config.saveAsMd5=false] - 以md5存储文件
  */
 module.exports = (config = {}) => {
   const getHashDir = () => {
@@ -56,23 +55,54 @@ module.exports = (config = {}) => {
       }
       let data = []
       for(let file of files) {
-        let fileNameWithPath
-        if (config.saveAsMd5 === true) {
-          const md5Code = md5File.sync(file.path)
-          const extName = path.extname(file.filename)
-          file.filename = `${md5Code}${extName}`
-          fileNameWithPath = path.join(file.destination, file.filename)
-          const stderr = shell.mv(file.path, fileNameWithPath).stderr
+        let newPathFile, filePath
+        const md5 = md5File.sync(file.path)
+        let fileExt = path.extname(file.filename)
+        // update file.filename to new name
+        file.filename = `${md5}${fileExt}`
+        const oldFile = await ctx.db.yangtaoFiles.findOne({
+          where: {
+            md5
+          }
+        })
+        if (oldFile) {
+          filePath = oldFile.path
+          fileExt = oldFile.FileExt
+          shell.rm(file.path)
+          await ctx.db.yangtaoFiles.update({
+            refCount: ctx.db.sequelize.literal('`RefCount` + 1')
+          }, {
+            where: {
+              id: oldFile.id
+            }
+          })
+        } else {
+          filePath = file.destination.replace(config.destPath, '')
+          newPathFile = path.join(file.destination, file.filename)
+          const stderr = shell.mv(file.path, newPathFile).stderr
           if (stderr !== null) {
             throw new Error({
               code: 'MOVING FILE ERROR',
               message: stderr
             })
           }
+          const currentTime = new Date(new Date().toUTCString())
+          const newFile = await ctx.db.yangtaoFiles.create({
+            id: 0,
+            path: filePath,
+            md5: md5,
+            fileExt: fileExt,
+            refCount: 1,
+            createAt: currentTime,
+            updateAt: currentTime
+          })
+          console.log(newFile)
         }
+
         data.push({
           fileName: file.filename,
-          filePath: file.destination.replace(config.destPath, '')
+          filePath,
+          originalFileName: file.originalname
         })
       }
       ctx.body = SuccessResult(data)
@@ -95,7 +125,8 @@ module.exports = (config = {}) => {
           ctx.body = ErrorResult(9114, `Unexpected fileFieldName: ${config.fileFieldName}`)
           break
         default:
-          ctx.body = ErrorResult(9115, `${e.name}: ${JSON.stringify(e)}`)
+          console.log(e)
+          ctx.body = ErrorResult(9115, `${e.name}: ${e.toString()}`)
       }
     }
   }
