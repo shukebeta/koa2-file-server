@@ -30,3 +30,14 @@ here is an example of the content of .env file:
     SAVE_AS_MD5=1
     API_URI=/api/upload
 
+
+	DB_HOST=192.168.178.52
+	DB_PORT=3306
+	DB_NAME=YangtaoStandard
+	DB_USERNAME=YangtaoABC
+	DB_PASSWORD="YangtaoABC@%#8.0"
+	DB_DIALECT=mysql
+
+
+## About database migration
+https://stackoverflow.com/questions/27835801/how-to-auto-generate-migrations-with-sequelize-cli-from-sequelize-models
