@@ -7,7 +7,8 @@ const {SuccessResult, ErrorResult} = require('./ApiResult')
  * @description simple file upload
  * @param {Object} config - 上传配置项
  * @param {String} config.destPath - '/dir' - 一个绝对路径
- * @param {String} [config.apiPath=/api/upload] - api路径
+ * @param {String} [config.apiUri=/api/upload] - 单个文件上传时使用的api路径
+ * @param {String} [config.apiUriMulti=/api/uploadMulti] - 一次上传多个文件时使用的api路径
  * @param {String[]} [config.allowedExt] - 允许的文件类型列表
  * @param {Number} [config.allowedSize=1024*20] - 允许的文件大小,单位KB
  * @param {String} [config.fileFieldName="file"] - post字段,默认为file
@@ -46,13 +47,19 @@ module.exports = (config = {}) => {
       cb(null, true)
     }
   }
-  const doUpload = async (ctx, next) => {
+  const doUpload = async (ctx, next, mInstance) => {
     try {
-      await ctx.upload.array(config.fileFieldName)(ctx, next)
-      const files = ctx.req.files
-      if (!files) {
-        return await next()
+      let single = true
+      let files
+      if (ctx.path === config.apiUri) {
+        await mInstance.single(config.fileFieldName)(ctx, next)
+        files = [ctx.req.file]
+      } else {
+        await mInstance.array(config.fileFieldName)(ctx, next)
+        files = ctx.req.files
+        single = false
       }
+
       let data = []
       for(let file of files) {
         let newPathFile, filePath
@@ -105,7 +112,7 @@ module.exports = (config = {}) => {
           originalFileName: file.originalname
         })
       }
-      ctx.body = SuccessResult(data)
+      ctx.body = SuccessResult(single ? data[0] : data)
       return false
     } catch (e) {
       switch (e.code) {
@@ -130,31 +137,22 @@ module.exports = (config = {}) => {
       }
     }
   }
+
+  const mConfig = {
+    fileFilter,
+    storage,
+    limits: {
+      fileSize: config.allowedSize * 1024
+    }
+  }
+  const mInstance = multer(mConfig)
+
   return async (ctx, next) => {
-    if (ctx.method !== 'POST') {
+    if (ctx.method !== 'POST' || !(ctx.path === config.apiUri || ctx.path === config.apiUriMulti)) {
       await next()
       return false
     }
-
-    const mConfig = {
-      fileFilter,
-      storage,
-      limits: {
-        fileSize: config.allowedSize * 1024
-      }
-    }
-
-    ctx.upload = multer(mConfig)
-    if (config.apiPath) {
-        if (ctx.path === config.apiPath) {
-          await doUpload(ctx, next)
-        } else {
-          await next()
-          return false
-        }
-    } else {
-      await doUpload(ctx, next)
-    }
+    await doUpload(ctx, next, mInstance)
   }
 }
 
