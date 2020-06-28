@@ -7,7 +7,6 @@ const Router = require('koa-router');
 const router = new Router();
 const open = require("open");
 const cors = require("@koa/cors")
-app.host = process.env.IP || 'localhost';
 app.port = process.env.PORT || 8000;
 
 app.context.db = require('../models/index')
@@ -38,7 +37,7 @@ router.get('/', async (ctx, next) => {
 app.use(router.routes());
 app.use(router.allowedMethods());
 
-const server = app.listen(app.port, app.host, () => {
-  open(`http://${app.host}:${app.port}`);
-  console.log('Koa server listening on %s:%d', server.address().address, server.address().port);
+const server = app.listen(app.port, null, () => {
+  // open(`http://${app.host}:${app.port}`);
+  console.log('Koa server listening on port: %d', server.address().port);
 });

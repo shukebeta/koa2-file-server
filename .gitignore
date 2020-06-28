@@ -1,6 +1,7 @@
 .idea
 .env
 .env.production
+.env.testing
 fileServer/static
 fileServer/files
 coverage/

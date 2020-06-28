@@ -1,0 +1,20 @@
+version: "2"
+
+services:
+  nginx:
+    build: ./nginx/
+    restart: always
+    container_name: nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./fileServer/files:/files
+      - ./nginx:/etc/nginx/conf.d
+  file-server:
+    build: .
+    restart: always
+    container_name: file-server
+    volumes:
+      - ./fileServer/.env.testing:/app/.env
+    ports:
+      - "3000:3000"

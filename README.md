@@ -10,8 +10,9 @@ It is based on [koa-file-uploader](https://www.npmjs.com/package/koa-file-upload
 	git clone git@github.com:shukebeta/koa2-file-server.git
 	cd koa2-file-server
 	npm install
-    cp .env.dev .env	
-	npm run demo
+    cp .env.develop .env	
+    # modify your .env file to fit your environment
+	npm start 
 
 ## Config
 
