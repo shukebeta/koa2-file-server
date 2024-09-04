@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@koa/cors':
-        specifier: 3.1.0
-        version: 3.1.0
+        specifier: 5.0.0
+        version: 5.0.0
       koa:
         specifier: ^2.5.0
         version: 2.15.3
@@ -31,7 +31,7 @@ importers:
         version: 6.29.0(mysql2@2.3.3)
       sequelize-auto-migrations:
         specifier: github:scimonster/sequelize-auto-migrations#a063aa6535a3f580623581bf866cef2d609531ba
-        version: https://codeload.github.com/scimonster/sequelize-auto-migrations/tar.gz/a063aa6535a3f580623581bf866cef2d609531ba
+        version: git+https://git@github.com:scimonster/sequelize-auto-migrations.git#a063aa6535a3f580623581bf866cef2d609531ba
       sequelize-cli:
         specifier: ^5.5.1
         version: 5.5.1
@@ -82,9 +82,9 @@ packages:
     resolution: {integrity: sha512-O8jcjabXaleOG9DQ0+ARXWZBTfnP4WNAqzuiJK7ll44AmxGKv/J2M4TPjxjY3znBCfvBXFzucm1twdyFybFqEA==}
     engines: {node: '>=12'}
 
-  '@koa/cors@3.1.0':
-    resolution: {integrity: sha512-7ulRC1da/rBa6kj6P4g2aJfnET3z8Uf3SWu60cjbtxTA5g8lxRdX/Bd2P92EagGwwAhANeNw8T8if99rJliR6Q==}
-    engines: {node: '>= 8.0.0'}
+  '@koa/cors@5.0.0':
+    resolution: {integrity: sha512-x/iUDjcS90W69PryLDIMgFyV21YLTnG9zOpPXS7Bkt2b8AsY3zZsIpOLBkYr9fBcF3HbkKaER5hOBZLfpLgYNw==}
+    engines: {node: '>= 14.0.0'}
 
   '@one-ini/wasm@0.1.1':
     resolution: {integrity: sha512-XuySG1E38YScSJoMlqovLru4KTUNSjgVTIjyh7qMX6aNN5HY5Ct5LhRJdxO79JtTzKfzV/bnWpz+zquYrISsvw==}
@@ -1568,8 +1568,8 @@ packages:
   seq-queue@0.0.5:
     resolution: {integrity: sha512-hr3Wtp/GZIc/6DAGPDcV4/9WoZhjrkXsi5B/07QgX8tsdc6ilr7BFM6PM6rbdAX1kFSDYeZGLipIZZKyQP0O5Q==}
 
-  sequelize-auto-migrations@https://codeload.github.com/scimonster/sequelize-auto-migrations/tar.gz/a063aa6535a3f580623581bf866cef2d609531ba:
-    resolution: {tarball: https://codeload.github.com/scimonster/sequelize-auto-migrations/tar.gz/a063aa6535a3f580623581bf866cef2d609531ba}
+  sequelize-auto-migrations@git+https://git@github.com:scimonster/sequelize-auto-migrations.git#a063aa6535a3f580623581bf866cef2d609531ba:
+    resolution: {commit: a063aa6535a3f580623581bf866cef2d609531ba, repo: git@github.com:scimonster/sequelize-auto-migrations.git, type: git}
     version: 1.1.0
     hasBin: true
 
@@ -1987,7 +1987,7 @@ snapshots:
       wrap-ansi: 8.1.0
       wrap-ansi-cjs: wrap-ansi@7.0.0
 
-  '@koa/cors@3.1.0':
+  '@koa/cors@5.0.0':
     dependencies:
       vary: 1.1.2
 
@@ -3449,7 +3449,7 @@ snapshots:
 
   seq-queue@0.0.5: {}
 
-  sequelize-auto-migrations@https://codeload.github.com/scimonster/sequelize-auto-migrations/tar.gz/a063aa6535a3f580623581bf866cef2d609531ba:
+  sequelize-auto-migrations@git+https://git@github.com:scimonster/sequelize-auto-migrations.git#a063aa6535a3f580623581bf866cef2d609531ba:
     dependencies:
       async: 2.6.4
       command-line-args: 5.2.1
