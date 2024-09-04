@@ -1,11 +1,12 @@
 /* jshint indent: 1 */
 
 module.exports = function(sequelize, DataTypes) {
-	return sequelize.define('yangtaoFiles', {
+	return sequelize.define('files', {
 		id: {
 			type: DataTypes.BIGINT,
 			allowNull: false,
 			primaryKey: true,
+			autoIncrement: true,
 			field: 'Id'
 		},
 		md5: {
@@ -19,6 +20,11 @@ module.exports = function(sequelize, DataTypes) {
 			allowNull: false,
 			field: 'Path'
 		},
+		fileName: {
+			type: DataTypes.CHAR(128),
+			allowNull: true,
+			field: 'FileName'
+		},
 		fileExt: {
 			type: DataTypes.CHAR(4),
 			allowNull: false,
@@ -30,17 +36,17 @@ module.exports = function(sequelize, DataTypes) {
 			field: 'RefCount'
 		},
 		createAt: {
-			type: DataTypes.DATE,
+			type: DataTypes.BIGINT,
 			allowNull: true,
 			field: 'CreateAt'
 		},
 		updateAt: {
-			type: DataTypes.DATE,
+			type: DataTypes.BIGINT,
 			allowNull: true,
 			field: 'UpdateAt'
 		}
 	}, {
-		tableName: 'YangtaoFiles',
+		tableName: 'Files',
 		timestamps: false
 	});
 };

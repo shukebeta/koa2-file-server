@@ -63,15 +63,14 @@
             <p>+n</p>
         </div>
         <p style="clear:both">Click and upload</p>
-        <label for="result">Response</label><p id="result" style="height: auto">
-        </p>
+        <p>response:</p>
+        <p id="result"></p>
     </div>
     <script>
         let $fileMulti = document.querySelector('input[multiple="multiple"]');
         let $file = document.querySelector('#file');
         const eventHandler = (e) => {
-          const el = document.querySelector('#result')
-          el.innerHTML = "uploading..."
+          document.querySelector('#result').innerText = "uploading..."
           var files = e.target.files;
           var form = new FormData();
           for (let file of files) {
@@ -82,20 +81,12 @@
           if (e.target.id === 'file') {
             apiUri = '/api/upload'
           }
-          request.open("POST", apiUri);
+          request.open("POST", `https://upload.dev.shukebeta.com${apiUri}`);
           request.onreadystatechange = (res) => {
             if (request.readyState === 4 && request.status === 200) {
-              // document.querySelector('#result').innerText = request.responseText;
-              let resp = JSON.parse(request.responseText);
-              console.log(resp)
-              const picList = !Array.isArray(resp.data) ? [resp.data] : resp.data
-              console.log(picList)
-              let resultHtml = ''
-              for(const pic of picList) {
-                resultHtml += `<img height="50" src="${pic.url}">${pic.filePath}${pic.fileName}<br />`
-              }
-              console.log(resultHtml)
-              el.innerHTML = resultHtml
+              document.querySelector('#result').innerText = request.responseText;
+              // let data = JSON.parse(request.responseText);
+
             }
           };
           request.send(form);

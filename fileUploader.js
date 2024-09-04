@@ -21,9 +21,21 @@ module.exports = (config = {}) => {
     return `/${getRandInt()}${getRandInt()}/${getRandInt()}${getRandInt()}/`
   }
 
+  const cleanUploadDir = (file) => {
+    // remove file
+    removeResult = shell.exec(`rm -f ${file.path.replace(/[ '"()&[\]]/g, char => {
+      return `\\${char}`
+    })}`)
+    if (removeResult.code !== 0) {
+      throw new Error(`remove ${file.path} fail, error message is ${removeResult.stdout}${removeResult.stderr}`)
+    }
+    shell.exec(`rmdir ${file.destination}`)
+    shell.exec(`rmdir ${file.destination.replace(/\d+\/$/, '')}`)
+  }
+
   const storage = multer.diskStorage({
     destination(req, file, callback) {
-      const savePath = config.destPath + getHashDir()
+      const savePath = '/tmp/uploadedFiles' + getHashDir()
       const stderr = shell.mkdir('-p', savePath).stderr
       if (stderr === null) {
         callback(null, savePath)
@@ -37,7 +49,7 @@ module.exports = (config = {}) => {
   })
 
   const fileFilter = (req, file, cb) => {
-    let extName = path.extname(file.originalname).toLowerCase()
+    let extName = path.extname(file.originalname).toLowerCase().trim();
     if (config.allowedExt && config.allowedExt.length && config.allowedExt.indexOf(extName) < 0) {
       cb({
         code: 'FILE_TYPE_ERROR',
@@ -48,6 +60,7 @@ module.exports = (config = {}) => {
     }
   }
   const doUpload = async (ctx, next, mInstance) => {
+    console.log(ctx)
     try {
       let single = true
       let files
@@ -61,56 +74,77 @@ module.exports = (config = {}) => {
       }
 
       let data = []
+      /*
+      file fields definition:
+      {
+        fieldname: 'img',
+        originalname: 'WWW.YTS.RE.jpg',
+        encoding: '7bit',
+        mimetype: 'image/jpeg',
+        destination: '/tmp/uploadedFiles/97/17/',
+        filename: 'WWW.YTS.RE.jpg',
+        path: '/tmp/uploadedFiles/97/17/WWW.YTS.RE.jpg',
+        size: 208047
+      }
+      */
       for(let file of files) {
-        let newPathFile, filePath
+        let filePath, fileName
+        if (file === undefined) continue
         const md5 = md5File.sync(file.path)
         let fileExt = path.extname(file.filename)
-        // update file.filename to new name
-        file.filename = `${md5}${fileExt}`
-        const oldFile = await ctx.db.yangtaoFiles.findOne({
+        const oldFile = await ctx.db.files.findOne({
           where: {
             md5
           }
         })
         if (oldFile) {
           filePath = oldFile.path
-          fileExt = oldFile.FileExt
-          shell.rm(file.path)
-          await ctx.db.yangtaoFiles.update({
-            refCount: ctx.db.sequelize.literal('`RefCount` + 1')
+          fileExt = oldFile.fileExt
+          fileName = `${md5}${fileExt}`
+          cleanUploadDir(file)
+          await ctx.db.files.update({
+            refCount: ctx.db.sequelize.literal('`RefCount` + 1'),
+            fileName: file.originalname
           }, {
             where: {
               id: oldFile.id
             }
           })
         } else {
-          filePath = file.destination.replace(config.destPath, '')
-          newPathFile = path.join(file.destination, file.filename)
-          const stderr = shell.mv(file.path, newPathFile).stderr
+          filePath = getHashDir()
+          fileName = `${md5}${fileExt}`
+          const newPath = path.join(config.destPath, filePath)
+          let stderr = shell.mkdir('-p', newPath).stderr
           if (stderr !== null) {
-            throw new Error({
-              code: 'MOVING FILE ERROR',
-              message: stderr
-            })
+            throw new Error(stderr)
           }
-          const currentTime = new Date(new Date().toUTCString())
-          const newFile = await ctx.db.yangtaoFiles.create({
+          stderr = shell.mv(file.path, path.join(newPath, fileName)).stderr
+          if (stderr !== null) {
+            throw new Error(stderr)
+          }
+          cleanUploadDir(file)
+          const currentTime = Math.round(+new Date()/1000)
+          await ctx.db.files.create({
             id: 0,
             path: filePath,
             md5: md5,
             fileExt: fileExt,
             refCount: 1,
+            fileName: file.originalname,
             createAt: currentTime,
             updateAt: currentTime
           })
-          console.log(newFile)
         }
 
         data.push({
-          fileName: file.filename,
+          fileName,
           filePath,
-          originalFileName: file.originalname
+          originalFileName: file.originalname,
+          url: `${process.env.IMG_SERVER}/320${filePath}${fileName}`
         })
+      }
+      if (data.length < 1) {
+        ctx.body = ErrorResult(1001, 'None of your files are uploaded.')
       }
       ctx.body = SuccessResult(single ? data[0] : data)
       return false
@@ -118,10 +152,6 @@ module.exports = (config = {}) => {
       switch (e.code) {
         case 'FILE_TYPE_ERROR': {
           ctx.body = ErrorResult(9111, e.message)
-          break
-        }
-        case 'MOVING_FILE_ERROR': {
-          ctx.body = ErrorResult(9112, `Cannot move file to ${file.destination}`)
           break
         }
         case 'LIMIT_FILE_SIZE': {
@@ -132,8 +162,7 @@ module.exports = (config = {}) => {
           ctx.body = ErrorResult(9114, `Unexpected fileFieldName: ${config.fileFieldName}`)
           break
         default:
-          console.log(e)
-          ctx.body = ErrorResult(9115, `${e.name}: ${e.toString()}`)
+          ctx.body = ErrorResult(9115, e.message)
       }
     }
   }

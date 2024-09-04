@@ -20,11 +20,6 @@
                     "field": "Path",
                     "seqType": "Sequelize.CHAR(20)"
                 },
-                "fileName": {
-                    "allowNull": true,
-                    "field": "FileName",
-                    "seqType": "Sequelize.CHAR(128)"
-                },
                 "fileExt": {
                     "allowNull": false,
                     "field": "FileExt",
@@ -38,16 +33,16 @@
                 "createAt": {
                     "allowNull": true,
                     "field": "CreateAt",
-                    "seqType": "Sequelize.BIGINT"
+                    "seqType": "Sequelize.DATE"
                 },
                 "updateAt": {
                     "allowNull": true,
                     "field": "UpdateAt",
-                    "seqType": "Sequelize.BIGINT"
+                    "seqType": "Sequelize.DATE"
                 }
             },
             "indexes": []
         }
     },
-    "revision": 2
+    "revision": 1
 }

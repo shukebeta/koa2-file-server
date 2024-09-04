@@ -1,7 +1,9 @@
 .idea
 .env
 .env.production
+.env.development
 .env.testing
+config/config.json
 fileServer/static
 fileServer/files
 coverage/

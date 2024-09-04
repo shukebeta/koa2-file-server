@@ -5,74 +5,44 @@ var Sequelize = require('sequelize');
 /**
  * Actions summary:
  *
- * createTable "Files", deps: []
+ * addColumn "fileName" to table "Files"
  *
  **/
 
 var info = {
-    "revision": 1,
+    "revision": 2,
     "name": "noname",
-    "created": "2020-06-23T04:54:27.692Z",
+    "created": "2020-06-30T23:42:20.855Z",
     "comment": ""
 };
 
 var migrationCommands = function(transaction) {
     return [{
-        fn: "createTable",
+        fn: "addColumn",
         params: [
             "Files",
+            "FileName",
             {
-                "id": {
-                    "type": Sequelize.BIGINT,
-                    "field": "Id",
-                    "primaryKey": true,
-                    "autoIncrement": true,
-                    "allowNull": false
-                },
-                "md5": {
-                    "type": Sequelize.CHAR(32),
-                    "field": "Md5",
-                    "unique": true,
-                    "allowNull": false
-                },
-                "path": {
-                    "type": Sequelize.CHAR(20),
-                    "field": "Path",
-                    "allowNull": false
-                },
-                "fileExt": {
-                    "type": Sequelize.CHAR(4),
-                    "field": "FileExt",
-                    "allowNull": false
-                },
-                "refCount": {
-                    "type": Sequelize.INTEGER,
-                    "field": "RefCount",
-                    "allowNull": true
-                },
-                "createAt": {
-                    "type": Sequelize.BIGINT,
-                    "field": "CreateAt",
-                    "allowNull": true
-                },
-                "updateAt": {
-                    "type": Sequelize.BIGINT,
-                    "field": "UpdateAt",
-                    "allowNull": true
-                }
+                "type": Sequelize.CHAR(128),
+                "field": "FileName",
+                "allowNull": true
             },
             {
-                "transaction": transaction
+                transaction: transaction
             }
         ]
     }];
 };
 var rollbackCommands = function(transaction) {
     return [{
-        fn: "dropTable",
-        params: ["Files", {
-            transaction: transaction
-        }]
+        fn: "removeColumn",
+        params: [
+            "Files",
+            "FileName",
+            {
+                transaction: transaction
+            }
+        ]
     }];
 };
 
