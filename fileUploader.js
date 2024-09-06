@@ -3,6 +3,7 @@ const multer = require('koa-multer')
 const shell = require('shelljs')
 const md5File = require('md5-file')
 const {SuccessResult, ErrorResult} = require('./ApiResult')
+const {removeFile, removeDir} = require('./lib/utils')
 /**
  * @description simple file upload
  * @param {Object} config - 上传配置项
@@ -21,16 +22,14 @@ module.exports = (config = {}) => {
     return `/${getRandInt()}${getRandInt()}/${getRandInt()}${getRandInt()}/`
   }
 
-  const cleanUploadDir = (file) => {
+  const cleanUploadDir = async (file) => {
+    console.log(file)
     // remove file
-    removeResult = shell.exec(`rm -f ${file.path.replace(/[ '"()&[\]]/g, char => {
-      return `\\${char}`
-    })}`)
-    if (removeResult.code !== 0) {
-      throw new Error(`remove ${file.path} fail, error message is ${removeResult.stdout}${removeResult.stderr}`)
-    }
-    shell.exec(`rmdir ${file.destination}`)
-    shell.exec(`rmdir ${file.destination.replace(/\d+\/$/, '')}`)
+    // await removeFile(file.path)
+    // second level hash
+    await removeDir(file.destination)
+    // first level hash
+    await removeDir(file.destination.replace(/\d+\/$/, ''))
   }
 
   const storage = multer.diskStorage({
@@ -101,7 +100,7 @@ module.exports = (config = {}) => {
           filePath = oldFile.path
           fileExt = oldFile.fileExt
           fileName = `${md5}${fileExt}`
-          cleanUploadDir(file)
+          await cleanUploadDir(file)
           await ctx.db.files.update({
             refCount: ctx.db.sequelize.literal('`RefCount` + 1'),
             fileName: file.originalname
