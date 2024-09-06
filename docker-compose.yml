@@ -1,16 +1,4 @@
 services:
-  nginx:
-    build: ./nginx/
-    restart: always
-    container_name: nginx
-    ports:
-      - "9009:80"
-      #- "443:443"
-    volumes:
-      - /data/nginx-images-cache:/nginx-images-cache
-      - /data/files:/files
-      - /etc/letsencrypt:/etc/letsencrypt
-      - ./nginx:/etc/nginx/conf.d
   file-server:
     build: .
     restart: always
