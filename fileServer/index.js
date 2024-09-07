@@ -11,7 +11,7 @@ app.port = process.env.PORT || 8000;
 app.context.db = require('../models/index')
 
 app.use(cors({
-  origin(ctx) {
+  origin: (ctx) => {
     const requestOriginWithoutPort = ctx.accept.headers.origin.toLowerCase().replace(/:\d+$/, '');
     const whitelist = process.env.ALLOWED_ORIGIN_SUFFIX.split(',')
     for(const suffix of whitelist) {
