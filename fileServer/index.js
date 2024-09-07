@@ -5,8 +5,9 @@ const fileUploader = require('../fileUploader.js');
 const Router = require('koa-router');
 const router = new Router();
 const cors = require("@koa/cors")
-app.port = process.env.PORT || 8000;
+const config = require('../config/appConfig')
 
+app.port = process.env.PORT || 8000;
 app.context.db = require('../models/index')
 
 app.use(cors({
@@ -22,14 +23,6 @@ app.use(cors({
   }
 }))
 
-const config = {
-  allowedSize: +process.env.MAX_FILE_SIZE || 512,
-  allowedExt: process.env.ALLOWED_EXT && process.env.ALLOWED_EXT.split(',') || ['.png', '.jpg', '.gif'],
-  destPath: process.env.DESTINATION,
-  fileFieldName: process.env.FILE_FIELD_NAME || 'file',
-  apiUri: process.env.API_URI || '/api/upload',
-  apiUriMulti: process.env.API_URI_MULTI || '/api/uploadMulti',
-}
 app.use(fileUploader(config));
 
 const views = require('koa-views');
