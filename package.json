@@ -23,7 +23,7 @@
     "koa": "^2.5.0",
     "koa-multer": "^1.0.2",
     "md5-file": "^4.0.0",
-    "mysql2": "^2.3.3",
+    "mysql2": "^3.9.8",
     "sequelize": "6.37.3",
     "sequelize-auto-migrations": "github:scimonster/sequelize-auto-migrations#a063aa6535a3f580623581bf866cef2d609531ba",
     "sequelize-cli": "^5.5.1"
