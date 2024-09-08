@@ -12,7 +12,6 @@ module.exports = (config = {}) => {
 
   const cleanUploadDir = async (file) => {
     try {
-      // await removeFile(file.path)
       await removeDir(file.destination)
       await removeDir(file.destination.replace(/\d+\/$/, ''))
     } catch (error) {
