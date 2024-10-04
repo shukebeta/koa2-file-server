@@ -26,7 +26,7 @@ module.exports = function(sequelize, DataTypes) {
 			field: 'FileName'
 		},
 		fileExt: {
-			type: DataTypes.CHAR(4),
+			type: DataTypes.CHAR(5),
 			allowNull: false,
 			field: 'FileExt'
 		},
@@ -35,15 +35,15 @@ module.exports = function(sequelize, DataTypes) {
 			allowNull: true,
 			field: 'RefCount'
 		},
-		createAt: {
+		createdAt: {
 			type: DataTypes.BIGINT,
 			allowNull: true,
-			field: 'CreateAt'
+			field: 'CreatedAt'
 		},
-		updateAt: {
+		updatedAt: {
 			type: DataTypes.BIGINT,
 			allowNull: true,
-			field: 'UpdateAt'
+			field: 'UpdatedAt'
 		}
 	}, {
 		tableName: 'Files',

@@ -91,7 +91,7 @@
               console.log(picList)
               let resultHtml = ''
               for(const pic of picList) {
-                resultHtml += `<img height="50" src="${pic.url}">${pic.filePath}${pic.fileName}<br />`
+                resultHtml += `<img height="50" src="${pic.url}">${pic.url}<br />`
               }
               console.log(resultHtml)
               el.innerHTML = resultHtml

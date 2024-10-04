@@ -8,4 +8,5 @@ module.exports = {
   fileFieldName: process.env.FILE_FIELD_NAME || 'file',
   apiUri: process.env.API_URI || '/api/upload',
   apiUriMulti: process.env.API_URI_MULTI || '/api/uploadMulti',
+  jwtSecret: process.env.JWT_SECRET || '',
 };

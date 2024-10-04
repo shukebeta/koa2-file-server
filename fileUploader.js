@@ -57,20 +57,15 @@ module.exports = (config = {}) => {
         if (!file) continue
         const md5 = md5File.sync(file.path)
         let fileExt = path.extname(file.filename)
-        const oldFile = await ctx.db.files.findOne({ where: { md5 } })
+        let image = await ctx.db.files.findOne({ where: { md5 } })
 
-        if (oldFile) {
+        if (image) {
           await cleanUploadDir(file)
           await ctx.db.files.update({
             refCount: ctx.db.sequelize.literal('`RefCount` + 1'),
             fileName: file.originalname
-          }, { where: { id: oldFile.id } })
-          data.push({
-            fileName: `${md5}${fileExt}`,
-            filePath: oldFile.path,
-            originalFileName: file.originalname,
-            url: `${process.env.IMG_SERVER}/320${oldFile.path}${md5}${fileExt}`
-          })
+          }, { where: { id: image.id } })
+          image.refCount += 1
         } else {
           const filePath = getHashDir()
           const fileName = `${md5}${fileExt}`
@@ -81,7 +76,7 @@ module.exports = (config = {}) => {
           await cleanUploadDir(file)
 
           const currentTime = Math.round(Date.now() / 1000)
-          await ctx.db.files.create({
+          image = await ctx.db.files.create({
             id: 0,
             path: filePath,
             md5,
@@ -91,14 +86,10 @@ module.exports = (config = {}) => {
             createAt: currentTime,
             updateAt: currentTime
           })
-
-          data.push({
-            fileName,
-            filePath,
-            originalFileName: file.originalname,
-            url: `${process.env.IMG_SERVER}/320${filePath}${fileName}`
-          })
         }
+        image = image.toJSON()
+        image.url = `${process.env.IMG_SERVER}/320${image.path}${image.md5}${image.fileExt}`
+        data.push(image)
       }
 
       ctx.body = data.length ? SuccessResult(isSingle ? data[0] : data) : ErrorResult(1001, 'None of your files were uploaded.')
