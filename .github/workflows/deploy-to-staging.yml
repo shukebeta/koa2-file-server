@@ -1,0 +1,35 @@
+name: Deploy staging file server with Docker Compose
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    runs-on: ARM64
+
+    steps:
+      - name: Create custom directory
+        run: mkdir -p /var/www/koa2-file-server
+
+      - name: Checkout code to /var/www/koa2-file-server
+        uses: actions/checkout@v4
+        with:
+          path: /var/www/koa2-file-server
+
+      - name: Replace credentials
+        run: |
+          pwd
+          cp .env.example .env
+          sed -i "s/sample-db-password/${{ secrets.MYSQL_PASSWORD_STAGING }}/g" /var/www/koa2-file-server/.env
+          sed -i "s/sample-jwt-secret/${{ secrets.JWT_SECRET_STAGING }}/g" /var/www/koa2-file-server/.env
+
+      - name: Build Docker image
+        run: docker compose build
+
+      - name: Take down old containers
+        run: docker compose down
+
+      - name: Start new containers
+        run: docker compose up -d
