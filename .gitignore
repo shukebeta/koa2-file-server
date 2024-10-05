@@ -2,8 +2,7 @@
 .env
 .env.production
 .env.development
-.env.testing
-config/config.json
+.env.staging
 fileServer/static
 fileServer/files
 coverage/
