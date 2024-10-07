@@ -48,6 +48,5 @@ app.use(router.routes());
 app.use(router.allowedMethods());
 
 const server = app.listen(app.port, null, () => {
-  // open(`http://${app.host}:${app.port}`);
   console.log('This upload server is listening on port: %d', server.address().port);
 });
