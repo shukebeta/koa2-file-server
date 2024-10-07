@@ -13,7 +13,7 @@ Requirements:
 - Single file upload URI is **/api/upload**
 - Multiple file upload URI is **/api/uploadMulti**
 
-Here's a code snippet to describe how to upload file to this server.
+Here's a code snippet to describe how to upload file to this server by node
 
         let $fileMulti = document.querySelector('input[multiple="multiple"]');
         let $file = document.querySelector('#file');
@@ -53,11 +53,16 @@ Response:
         "success":true,
         "errorCode":0,
         "msg":"success",
-        "data":{
-            "fileName":"bbs.png",
-            "filePath":"/51/25/",
-            "originalFileName":"bbs.png",
-            "url":"https://img.your-domain.com/320/51/25/bbs.png"}
+        "data": {
+            "id": 23,
+            "md5": "d8c933893793745228282aaed6141ce5",
+            "path": "/50/99/",
+            "fileName": "weibo-abnormal.png",
+            "fileExt": ".png",
+            "refCount": 3,
+            "createdAt": 1727908785,
+            "updatedAt": 1727908785,
+            "url": "http://localhost:3333/320/50/99/d8c933893793745228282aaed6141ce5.png"
         }
     }
 
@@ -73,42 +78,41 @@ Response:
         "errorCode":0,
         "msg":"success",
         "data":[{
-            "fileName":"bbs.png",
-            "filePath":"/51/25/",
-            "originalFileName":"bbs.png",
-            "url":"https://img.your-domain.com/320/51/25/bbs.png"}
+            "id": 23,
+            "md5": "d8c933893793745228282aaed6141ce5",
+            "path": "/50/99/",
+            "fileName": "weibo-abnormal.png",
+            "fileExt": ".png",
+            "refCount": 3,
+            "createdAt": 1727908785,
+            "updatedAt": 1727908785,
+            "url": "http://localhost:3333/320/50/99/d8c933893793745228282aaed6141ce5.png"
         }, {
-            "fileName":"bbs.png",
-            "filePath":"/51/25/",
-            "originalFileName":"bbs.png",
-            "url":"https://img.your-domain.com/320/51/25/bbs.png"}
+            "id": 24,
+            "md5": "d8c933893793745228282aaed6141ce5",
+            "path": "/50/99/",
+            "fileName": "weibo-abnormal.png",
+            "fileExt": ".png",
+            "refCount": 3,
+            "createdAt": 1727908785,
+            "updatedAt": 1727908785,
+            "url": "http://localhost:3333/320/50/99/d8c933893793745228282aaed6141ce5.png"
         }, 
         ...
         ]
     }
     
-## Smart Image Server
-
-Every image will get an address like `https://img.your-domain.com/320/51/25/6a3744f6b19e1c0657820ef98ddd7fef.png`.
-This address can be divided into 3 parts:
-
-1. img host: https://img.your-domain.com/
-2. filepath: /51/25/6a3744f6b19e1c0657820ef98ddd7fef.png
-3. image width: 320 between imge host and filepath, you can change it to whatever width you actually need.
-
-## Origin Image Server
-
-`https://file.your-domain.com/51/25/6a3744f6b19e1c0657820ef98ddd7fef.png` will always give you the original image you uploaded.
-
 ## install & setup & run
 
 	git clone git@github.com:shukebeta/koa2-file-server.git
 	cd koa2-file-server
 	npm install
-    cp .env.develop .env	
+    cp .env.example .env	
     # modify your .env file to fit your environment
     # ensure your database is ready.
 	docker-compose up -d
+    # check the last section of this README file to setup an image server for showing the images you uploaded locally.
+    # launch your browser and navigate to http://localhost:{the port number you set in your .env file}
 
 ## Config
 
@@ -121,13 +125,13 @@ here is an example of the content of .env file:
     PORT=3000
 
     # cors setup
-    ALLOWED_ORIGIN_SUFFIX=localhost:8080,yourdomain.com
+    ALLOWED_ORIGIN_SUFFIX=localhost,yourdomain.com
 
     # <input type=file name="img" />
     FILE_FIELD_NAME=img
 
     # allowed file type
-    ALLOWED_EXT=.png,.jpg,.gif
+    ALLOWED_EXT=.png,.jpg,.gif,.jpeg
 
     # 2048 means 2048 KB
     MAX_FILE_SIZE=2048
@@ -154,7 +158,10 @@ here is an example of the content of .env file:
 	IMG_SERVER=http://img.sample.domain.com
 
 ## About database migration
-unfortunately, this migration toolkit is buggy. I don't recommend it after meeting a few serious bugs.
 https://stackoverflow.com/questions/27835801/how-to-auto-generate-migrations-with-sequelize-cli-from-sequelize-models
 
 - run `npx sequelize db:migrate` to initialize the `Files` table in your specified database.
+
+## Want a responsive image server? check out the following project, and you can set up one in a few minutes
+
+[Responsive image server](https://github.com/shukebeta/responsive-image-server)

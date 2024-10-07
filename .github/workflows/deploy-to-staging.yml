@@ -3,7 +3,7 @@ name: Deploy staging file server with Docker Compose
 on:
   push:
     branches:
-      - master
+      - non-existed-branch
 
 jobs:
   deploy:
