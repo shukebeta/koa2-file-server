@@ -27,12 +27,7 @@ const jwtMiddleware = async (ctx, next) => {
 
 const conditionalJwtMiddleware = async (ctx, next) => {
   if ((ctx.path === config.apiUri || ctx.path === config.apiUriMulti) && ctx.method === 'POST') {
-    const origin = ctx.headers.origin
-    if (origin !== undefined && origin.includes('localhost')) {
-      await next()
-    } else {
-      await jwtMiddleware(ctx, next);
-    }
+    await jwtMiddleware(ctx, next);
   } else {
     await next()
   }

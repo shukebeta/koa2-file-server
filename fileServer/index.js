@@ -21,7 +21,7 @@ app.use((ctx, next) => {
         const whitelist = process.env.ALLOWED_ORIGIN_SUFFIX.split(',');
         for (const suffix of whitelist) {
           if (requestOriginWithoutPort.endsWith(suffix)) {
-            return ctx.accept.headers.host;
+            return origin;
           }
         }
         return '';
