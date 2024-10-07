@@ -58,14 +58,17 @@ module.exports = (config = {}) => {
         const md5 = md5File.sync(file.path)
         let fileExt = path.extname(file.filename)
         let image = await ctx.db.files.findOne({ where: { md5 } })
+        const nowInUnixTimestamp = Math.round(Date.now() / 1000)
 
         if (image) {
           await cleanUploadDir(file)
           await ctx.db.files.update({
             refCount: ctx.db.sequelize.literal('`RefCount` + 1'),
+            updatedAt: nowInUnixTimestamp,
             fileName: file.originalname
           }, { where: { id: image.id } })
           image.refCount += 1
+          image.updatedAt = nowInUnixTimestamp
         } else {
           const filePath = getHashDir()
           const fileName = `${md5}${fileExt}`
@@ -75,7 +78,6 @@ module.exports = (config = {}) => {
           await moveFile(file.path, path.join(newPath, fileName))
           await cleanUploadDir(file)
 
-          const currentTime = Math.round(Date.now() / 1000)
           image = await ctx.db.files.create({
             id: 0,
             path: filePath,
@@ -83,8 +85,8 @@ module.exports = (config = {}) => {
             fileExt,
             refCount: 1,
             fileName: file.originalname,
-            createAt: currentTime,
-            updateAt: currentTime
+            createdAt: nowInUnixTimestamp,
+            updatedAt: null
           })
         }
         image = image.toJSON()
