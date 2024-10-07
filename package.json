@@ -24,7 +24,6 @@
     "md5-file": "^4.0.0",
     "mysql2": "^3.11.3",
     "sequelize": "6.37.4",
-    "sequelize-auto-migrations": "github:scimonster/sequelize-auto-migrations#a063aa6535a3f580623581bf866cef2d609531ba",
     "sequelize-cli": "^5.5.1",
     "dotenv": "^8.2.0",
     "form-data": "^2.3.2",
