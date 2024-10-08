@@ -9,7 +9,7 @@ RUN npm install -g pnpm
 COPY ./src ./src
 
 # Copy package.json and pnpm-lock.yaml
-COPY package.json pnpm-lock.yaml .env ./
+COPY package.json pnpm-lock.yaml .env .sequelizerc ./
 COPY src/config/config.json ./src/config/
 
 # Install all dependencies
@@ -23,7 +23,7 @@ FROM node:20-alpine AS production-stage
 WORKDIR /app
 
 # Copy necessary files and production dependencies from build stage
-COPY --from=build-stage /app/package.json /app/pnpm-lock.yaml /app/.env ./
+COPY --from=build-stage /app/package.json /app/pnpm-lock.yaml /app/.env /app/.sequelizerc ./
 COPY --from=build-stage /app/node_modules ./node_modules
 COPY --from=build-stage /app/src ./src
 
