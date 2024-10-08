@@ -42,7 +42,12 @@ const views = require('koa-views');
 app.use(views(__dirname));
 
 router.get('/', async (ctx, next) => {
-    await ctx.render('demo.html');
+    if (ctx.request.query['test'] !== undefined ) {
+      await ctx.render('demo.html');
+    } else {
+      ctx.status = 400;
+      ctx.body = 'invalid request'
+    }
 });
 app.use(router.routes());
 app.use(router.allowedMethods());
