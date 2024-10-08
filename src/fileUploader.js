@@ -21,7 +21,7 @@ module.exports = (config = {}) => {
 
   const storage = multer.diskStorage({
     destination: async (req, file, callback) => {
-      const savePath = '/tmp/uploadedFiles' + getHashDir()
+      const savePath = config.destPath + '/tmp/uploadedFiles' + getHashDir()
       try {
         await createDirectory(savePath)
         callback(null, savePath)
