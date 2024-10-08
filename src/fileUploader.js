@@ -97,6 +97,7 @@ module.exports = (config = {}) => {
       ctx.body = data.length ? SuccessResult(isSingle ? data[0] : data) : ErrorResult(1001, 'None of your files were uploaded.')
     } catch (e) {
       console.log(e)
+      ctx.status = 503;
       switch (e.code) {
         case 'FILE_TYPE_ERROR':
           ctx.body = ErrorResult(9111, e.message)
