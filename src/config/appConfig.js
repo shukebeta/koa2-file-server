@@ -9,4 +9,5 @@ module.exports = {
   apiUri: process.env.API_URI || '/api/upload',
   apiUriMulti: process.env.API_URI_MULTI || '/api/uploadMulti',
   jwtSecret: process.env.JWT_SECRET || '',
+  imgServer: process.env.IMG_SERVER || 'to be defined in .env',
 };

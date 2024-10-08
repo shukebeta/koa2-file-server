@@ -90,7 +90,7 @@ module.exports = (config = {}) => {
           })
         }
         image = image.toJSON()
-        image.url = `${process.env.IMG_SERVER}/320${image.path}${image.md5}${image.fileExt}`
+        image.url = `${config.imgServer}/320${image.path}${image.md5}${image.fileExt}`
         data.push(image)
       }
 
