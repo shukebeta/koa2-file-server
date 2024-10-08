@@ -1,6 +1,7 @@
 .idea
 .env
 coverage/
+src/config/config.json
 npm-debug.log
 /node_modules/
 test/static

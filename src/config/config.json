@@ -1,0 +1,10 @@
+{
+  "development": {
+    "username": "default_user",
+    "password": "sample-db-password",
+    "database": "HappyNotes",
+    "port": 6306,
+    "host": "sample-host-name",
+    "dialect": "mysql"
+  }
+}
