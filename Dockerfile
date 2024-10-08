@@ -12,7 +12,7 @@ COPY package.json pnpm-lock.yaml ./
 RUN pnpm install
 
 # Copy the rest of the application code
-COPY . .
+COPY ./src ./src
 
 # Prune devDependencies
 RUN pnpm prune --prod
