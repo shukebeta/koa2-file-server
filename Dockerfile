@@ -10,7 +10,6 @@ COPY ./src ./src
 
 # Copy package.json and pnpm-lock.yaml
 COPY package.json pnpm-lock.yaml .env .sequelizerc ./
-COPY src/config/config.json ./src/config/
 
 # Install all dependencies
 RUN pnpm install
