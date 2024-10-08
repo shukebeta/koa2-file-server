@@ -1,5 +1,5 @@
-# build stage
-FROM node:20.12.2 AS build-stage
+# Build stage
+FROM node:20-alpine AS build-stage
 WORKDIR /app
 
 # Install pnpm
@@ -8,12 +8,23 @@ RUN npm install -g pnpm
 # Copy package.json and pnpm-lock.yaml
 COPY package.json pnpm-lock.yaml ./
 
-# Install dependencies using pnpm
+# Install all dependencies
 RUN pnpm install
 
 # Copy the rest of the application code
 COPY . .
 
-EXPOSE 3000
-CMD ["pnpm", "start"]
+# Prune devDependencies
+RUN pnpm prune --prod
 
+# Production stage
+FROM node:20-alpine AS production-stage
+WORKDIR /app
+
+# Copy necessary files and production dependencies from build stage
+COPY --from=build-stage /app/package.json /app/pnpm-lock.yaml ./
+COPY --from=build-stage /app/node_modules ./node_modules
+COPY --from=build-stage /app/src ./src
+
+EXPOSE 3000
+CMD ["node", "./src/fileServer/index.js"]

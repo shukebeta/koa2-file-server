@@ -8,7 +8,7 @@ const config = require('../config/appConfig')
 const jwtMiddleware = require('../middlewares/jwtMiddleware');
 
 app.port = process.env.PORT || 8000;
-app.context.db = require('../models/index')
+app.context.db = require('../models')
 
 app.use((ctx, next) => {
   const origin = ctx.headers['origin'];
