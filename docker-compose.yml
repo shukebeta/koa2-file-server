@@ -6,5 +6,6 @@ services:
     network_mode: host
     volumes:
       - /data/files:/data/files
+      - /tmp/uploadedFiles:/tmp/uploadedFiles
     expose:
       - "3000"
