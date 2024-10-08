@@ -1,0 +1,58 @@
+#!/bin/bash
+set -x -e
+
+REMOTE_SERVER=$1
+ENV_NAME=$2
+
+# Check if the remote server parameter is provided
+if [ -z "$REMOTE_SERVER" ] || [ -z "$ENV_NAME" ]; then
+   echo "Usage: $0 machine-name staging|production"
+   exit 1
+fi
+
+# Variables for remote server and project
+REMOTE_PROJECT_DIR="~/koa2-file-server"
+REMOTE_SCRIPT="deploy_koa2_file_server.sh"
+
+# Step 1: Create the deployment script locally
+cat << EOF > /tmp/$REMOTE_SCRIPT
+#!/bin/bash
+
+# Navigate to project directory, create if it doesn't exist
+mkdir -p $REMOTE_PROJECT_DIR
+cd $REMOTE_PROJECT_DIR
+
+# Pull the latest code from GitHub (master branch)
+if [ ! -d ".git" ]; then
+  git clone git@github.com:shukebeta/koa2-file-server.git .
+else
+  git pull origin master
+fi
+
+# Copy the environment file and update secrets from environment variables
+cp .env.${ENV_NAME} .env
+ls -l src/config
+cp src/config/config.json.example src/config/config.json
+sed -i "s/sample-db-password/\${MYSQL_PASSWORD}/g" .env src/config/config.json
+sed -i "s/sample-host-name/\${DB_HOST_NAME}/g" .env src/config/config.json
+sed -i "s/sample-jwt-secret/\${JWT_SECRET}/g" .env
+sed -i "s/sample-img-server/\${IMG_SERVER}/g" .env
+
+# Build and restart the Docker containers
+docker compose build --no-cache
+docker compose down
+docker compose up -d
+docker rmi -f \$(docker images -f dangling=true -q)
+EOF
+
+# Step 2: Copy the deployment script to the remote machine
+scp /tmp/$REMOTE_SCRIPT $REMOTE_SERVER:/tmp/
+
+# Step 3: Run the script on the remote machine via SSH
+ssh -t $REMOTE_SERVER "bash -l /tmp/$REMOTE_SCRIPT"
+
+# Step 4: Clean up the script from the remote machine
+#ssh $REMOTE_SERVER "rm /tmp/$REMOTE_SCRIPT"
+
+echo "Deployment script executed on $REMOTE_SERVER."
+
