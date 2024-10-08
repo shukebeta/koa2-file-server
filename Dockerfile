@@ -5,14 +5,15 @@ WORKDIR /app
 # Install pnpm
 RUN npm install -g pnpm
 
+# Copy the rest of the application code
+COPY ./src ./src
+
 # Copy package.json and pnpm-lock.yaml
 COPY package.json pnpm-lock.yaml .env ./
+COPY src/config/config.json ./src/config/
 
 # Install all dependencies
 RUN pnpm install
-
-# Copy the rest of the application code
-COPY ./src ./src
 
 # Prune devDependencies
 RUN pnpm prune --prod
