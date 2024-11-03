@@ -13,7 +13,7 @@ app.context.db = require('../models')
 app.use((ctx, next) => {
   const origin = ctx.headers['origin'];
 
-  if (origin) {
+  if (origin && ctx.request.query['test'] !== undefined) {
     // If 'Origin' header is present, it's likely a web request, so apply CORS middleware
     return cors({
       origin: (ctx) => {
