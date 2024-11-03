@@ -77,9 +77,9 @@
             form.append('img', file);
           }
           const request = new XMLHttpRequest()
-          let apiUri = '/api/uploadMulti'
+          let apiUri = '/api/uploadMulti?test=1'
           if (e.target.id === 'file') {
-            apiUri = '/api/upload'
+            apiUri = '/api/upload?test=1'
           }
           request.open("POST", apiUri);
           request.onreadystatechange = (res) => {
