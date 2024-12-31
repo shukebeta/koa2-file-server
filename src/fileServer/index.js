@@ -41,6 +41,18 @@ const views = require('koa-views');
 // Must be used before any router is used
 app.use(views(__dirname));
 
+router.get('/config', async (ctx, next) => {
+  if (ctx.request.query['test'] !== undefined ) {
+    const {allowedSize, allowedExt} = config
+    ctx.body = JSON.stringify({
+      allowedSize,
+      allowedExt,
+    });
+  } else {
+    ctx.status = 400;
+    ctx.body = 'invalid request'
+  }
+});
 router.get('/', async (ctx, next) => {
     if (ctx.request.query['test'] !== undefined ) {
       await ctx.render('demo.html');

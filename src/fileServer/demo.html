@@ -103,6 +103,25 @@
         }
         $file.addEventListener('change', eventHandler);
         $fileMulti.addEventListener('change', eventHandler);
+        // Add config fetching when page loads
+        document.addEventListener('DOMContentLoaded', async () => {
+          try {
+            const response = await fetch('/config?test=1');
+            const config = await response.json();
+
+            // Find the list items
+            const listItems = document.querySelectorAll('ul li');
+
+            // Update allowedSize
+            listItems[1].textContent = `allowedSize: ${config.allowedSize}KB`;
+
+            // Update allowedExt
+            listItems[2].textContent = `allowedExt: [${config.allowedExt.join(', ')}]`;
+
+          } catch (error) {
+            console.error('Error fetching config:', error);
+          }
+        });
     </script>
 </body>
 </html>
