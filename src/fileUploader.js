@@ -1,8 +1,8 @@
 const path = require('path')
-const multer = require('koa-multer')
+const multer = require('@koa/multer')  // Changed import
 const md5File = require('md5-file')
 const { SuccessResult, ErrorResult } = require('./ApiResult')
-const { createDirectory, moveFile, removeFile, removeDir } = require('./lib/utils'); // Import utility methods
+const { createDirectory, moveFile, removeFile, removeDir } = require('./lib/utils')
 
 module.exports = (config = {}) => {
   const getHashDir = () => {
@@ -37,20 +37,34 @@ module.exports = (config = {}) => {
   const fileFilter = (req, file, cb) => {
     const extName = path.extname(file.originalname).toLowerCase().trim()
     if (config.allowedExt && config.allowedExt.length && !config.allowedExt.includes(extName)) {
-      cb({
-        code: 'FILE_TYPE_ERROR',
-        message: `Only ${config.allowedExt.join(',')} files are allowed to upload.`
-      }, false)
+      cb(new FileTypeError(`Only ${config.allowedExt.join(',')} files are allowed to upload.`))
     } else {
       cb(null, true)
     }
   }
 
-  const doUpload = async (ctx, next, mInstance) => {
+  const upload = multer({
+    storage,
+    fileFilter,
+    limits: {
+      fileSize: config.allowedSize * 1024
+    }
+  })
+
+  return async (ctx, next) => {
+    if (ctx.method !== 'POST' || !(ctx.path === config.apiUri || ctx.path === config.apiUriMulti)) {
+      return next()
+    }
+
     try {
       const isSingle = ctx.path === config.apiUri
-      await mInstance[isSingle ? 'single' : 'array'](config.fileFieldName)(ctx, next)
-      const files = isSingle ? [ctx.req.file] : ctx.req.files
+      await upload[isSingle ? 'single' : 'array'](config.fileFieldName)(ctx, next)
+
+      const files = isSingle ? [ctx.request.file] : ctx.request.files
+      if (!files || !files.length || !files[0]) {
+        ctx.body = ErrorResult(1001, 'None of your files were uploaded.')
+        return
+      }
 
       let data = []
       for (const file of files) {
@@ -63,7 +77,7 @@ module.exports = (config = {}) => {
         if (image) {
           await cleanUploadDir(file)
           await ctx.db.files.update({
-            refCount: ctx.db.sequelize.literal('`RefCount` + 1'),
+            refCount: ctx.db.sequelize.literal('RefCount + 1'),
             updatedAt: nowInUnixTimestamp,
             fileName: file.originalname
           }, { where: { id: image.id } })
@@ -94,40 +108,32 @@ module.exports = (config = {}) => {
         data.push(image)
       }
 
-      ctx.body = data.length ? SuccessResult(isSingle ? data[0] : data) : ErrorResult(1001, 'None of your files were uploaded.')
-    } catch (e) {
-      console.log(e)
-      ctx.status = 503;
-      switch (e.code) {
-        case 'FILE_TYPE_ERROR':
-          ctx.body = ErrorResult(9111, e.message)
-          break
-        case 'LIMIT_FILE_SIZE':
-          ctx.body = ErrorResult(9113, `File is larger than ${config.allowedSize}KB`)
-          break
-        case 'LIMIT_UNEXPECTED_FILE':
-          ctx.body = ErrorResult(9114, `Unexpected fileFieldName: ${config.fileFieldName}`)
-          break
-        default:
-          ctx.body = ErrorResult(9115, e.message)
+      ctx.body = data.length ?
+        SuccessResult(isSingle ? data[0] : data) :
+        ErrorResult(1001, 'None of your files were uploaded.')
+
+    } catch (err) {
+      console.error('Upload error:', err)
+      ctx.status = 503
+
+      if (err instanceof FileTypeError || err.code === 'FILE_TYPE_ERROR') {
+        ctx.body = ErrorResult(9111, err.message)
+      } else if (err.code === 'LIMIT_FILE_SIZE') {
+        ctx.body = ErrorResult(9113, `File is larger than ${config.allowedSize}KB`)
+      } else if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+        ctx.body = ErrorResult(9114, `Unexpected fileFieldName: ${config.fileFieldName}`)
+      } else {
+        ctx.body = ErrorResult(9115, err.message || 'Unknown upload error')
       }
     }
   }
+}
 
-  const mConfig = {
-    fileFilter,
-    storage,
-    limits: {
-      fileSize: config.allowedSize * 1024
-    }
-  }
-  const mInstance = multer(mConfig)
 
-  return async (ctx, next) => {
-    if (ctx.method !== 'POST' || !(ctx.path === config.apiUri || ctx.path === config.apiUriMulti)) {
-      await next()
-      return
-    }
-    await doUpload(ctx, next, mInstance)
+class FileTypeError extends Error {
+  constructor(message) {
+    super(message);
+    this.code = 'FILE_TYPE_ERROR';
+    this.name = 'FileTypeError';
   }
 }
