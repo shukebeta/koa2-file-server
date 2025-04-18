@@ -2,10 +2,10 @@
   "name": "koa2-file-server",
   "version": "1.1.0",
   "description": "simple file uploader using koa",
-  "main": "src/fileUploader.js",
+  "main": "src/app.js",
   "scripts": {
     "db:makemigrations": "./node_modules/sequelize-auto-migrations/bin/makemigration.js",
-    "start": "nodemon src/fileServer/index.js"
+    "start": "nodemon src/app.js"
   },
   "repository": "https://github.com/backToNature/koa-file-uploader",
   "keywords": [

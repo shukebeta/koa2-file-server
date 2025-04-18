@@ -27,4 +27,4 @@ COPY --from=build-stage /app/node_modules ./node_modules
 COPY --from=build-stage /app/src ./src
 
 EXPOSE 3000
-CMD ["node", "./src/fileServer/index.js"]
+CMD ["node", "./src/app.js"]

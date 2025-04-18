@@ -1,9 +1,12 @@
-// jwtMiddleware.js
-const config = require('../config/appConfig');
 const jwt = require('jsonwebtoken');
+const config = require('../config/appConfig');
 
-const SECRET_KEY = config.jwtSecret;
-
+/**
+ * JWT Middleware for authentication.
+ * Validates JWT tokens in the Authorization header of incoming requests conditionally
+ * for specific upload endpoints. If valid, attaches user information to the context;
+ * otherwise, returns an unauthorized response.
+ */
 const jwtMiddleware = async (ctx, next) => {
   const authHeader = ctx.headers['authorization'];
 
@@ -16,21 +19,24 @@ const jwtMiddleware = async (ctx, next) => {
   const token = authHeader.split(' ')[1];
 
   try {
-     // 验证JWT Token
-    ctx.state.user = jwt.verify(token, SECRET_KEY); // 把解码后的用户信息存储在ctx.state.user中供后续使用
-    await next(); // 验证成功，继续执行后续中间件
+    // Verify JWT Token
+    ctx.state.user = jwt.verify(token, config.jwtSecret); // Store decoded user info in ctx.state.user for downstream use
+    await next(); // Verification successful, proceed to next middleware
   } catch (err) {
-    ctx.status = 403; // Token无效或过期
+    ctx.status = 403; // Token invalid or expired
     ctx.body = { error: 'Invalid or expired token' };
   }
-}
+};
 
+/**
+ * Conditional JWT Middleware to apply authentication only for upload endpoints.
+ */
 const conditionalJwtMiddleware = async (ctx, next) => {
   if ((ctx.path === config.apiUri || ctx.path === config.apiUriMulti) && ctx.method === 'POST') {
     await jwtMiddleware(ctx, next);
   } else {
-    await next()
+    await next();
   }
-}
+};
 
 module.exports = conditionalJwtMiddleware;

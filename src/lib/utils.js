@@ -36,7 +36,7 @@ async function removeFile(filePath) {
 // Remove a directory (like `rmdir`)
 async function removeDir(dirPath) {
   try {
-    await fs.rmdir(dirPath, { recursive: true })
+    await fs.rm(dirPath, { recursive: true })
     console.log(`Directory removed: ${dirPath}`)
   } catch (error) {
     console.error(`Failed to remove directory: ${dirPath}`, error)
