@@ -127,9 +127,10 @@ class FileService {
    * @param {Object} file - File object from multer.
    * @param {string} outputPath - Destination path for processed file.
    * @param {string} targetExtension - Target file extension after processing.
+   * @param {number} [maxNarrowSideOverride] - Optional override for max narrow side dimension.
    * @returns {Promise<void>}
    */
-  async processImageFile(file, outputPath, targetExtension) {
+  async processImageFile(file, outputPath, targetExtension, maxNarrowSideOverride) {
     let sourcePath = file.path;
     let tempJpegPath = null;
 
@@ -140,9 +141,23 @@ class FileService {
         sourcePath = tempJpegPath;
       }
 
-      // Apply rotation and save to final destination
-      const image = sharp(sourcePath);
-      await image.rotate().toFile(outputPath);
+      let image = sharp(sourcePath);
+      const metadata = await image.metadata();
+      const { width, height } = metadata;
+
+      const maxNarrowSide = maxNarrowSideOverride || this.config.maxImageNarrowSide;
+
+      // Resize if the narrow side exceeds the maximum allowed dimension
+      if (width && height && (Math.min(width, height) > maxNarrowSide)) {
+        image = image.resize({
+          width: width > height ? undefined : maxNarrowSide,
+          height: height > width ? undefined : maxNarrowSide,
+          withoutEnlargement: true // Ensures images are only shrunk, not enlarged
+        });
+      }
+
+      // Apply rotation and save to final destination, preserving EXIF metadata
+      await image.rotate().withMetadata().toFile(outputPath);
 
     } catch (error) {
       console.error('Image processing failed:', error);
@@ -189,9 +204,10 @@ class FileService {
    * @param {Object} file - File object from multer.
    * @param {string} md5Hash - MD5 hash of the file.
    * @param {Object} db - Database context.
+   * @param {number} [maxNarrowSideOverride] - Optional override for max narrow side dimension.
    * @returns {Promise<Object>} Created file record.
    */
-  async processNewFile(file, md5Hash, db) {
+  async processNewFile(file, md5Hash, db, maxNarrowSideOverride) {
     const storagePath = this.getHashDir();
     let fileExtension = path.extname(file.filename || file.originalname);
     const destinationDir = path.join(this.config.destPath, storagePath);
@@ -207,8 +223,8 @@ class FileService {
       const fileName = `${md5Hash}${fileExtension}`;
       const fullOutputPath = path.join(destinationDir, fileName);
       
-      // Process image files (rotation, format conversion)
-      await this.processImageFile(file, fullOutputPath, fileExtension);
+      // Process image files (rotation, format conversion, and resizing)
+      await this.processImageFile(file, fullOutputPath, fileExtension, maxNarrowSideOverride);
     } else {
       // Handle non-image files
       const fileName = `${md5Hash}${fileExtension}`;
@@ -229,9 +245,10 @@ class FileService {
    * Processes a single uploaded file.
    * @param {Object} file - File object from multer.
    * @param {Object} db - Database context.
+   * @param {number} [maxNarrowSideOverride] - Optional override for max narrow side dimension.
    * @returns {Promise<Object>} Processed file record with URL.
    */
-  async processSingleFile(file, db) {
+  async processSingleFile(file, db, maxNarrowSideOverride) {
     if (!file) {
       return null;
     }
@@ -246,7 +263,7 @@ class FileService {
         fileRecord = await this.updateExistingFile(fileRecord, file, db);
       } else {
         // New file, process and store
-        fileRecord = await this.processNewFile(file, md5Hash, db);
+        fileRecord = await this.processNewFile(file, md5Hash, db, maxNarrowSideOverride);
         await this.cleanUploadDir(file);
       }
 
@@ -271,9 +288,10 @@ class FileService {
    * and storing file metadata in the database.
    * @param {Object|Array} files - Single file or array of file objects from multer.
    * @param {Object} db - Database context for operations.
+   * @param {number} [maxNarrowSideOverride] - Optional override for max narrow side dimension.
    * @returns {Promise<Array>} Array of processed file metadata with URLs.
    */
-  async processFiles(files, db) {
+  async processFiles(files, db, maxNarrowSideOverride) {
     // Normalize input to array
     const fileArray = Array.isArray(files) ? files : [files];
     
@@ -287,7 +305,7 @@ class FileService {
     // Process each file and collect results
     const results = [];
     for (const file of validFiles) {
-      const processedFile = await this.processSingleFile(file, db);
+      const processedFile = await this.processSingleFile(file, db, maxNarrowSideOverride);
       if (processedFile) {
         results.push(processedFile);
       }

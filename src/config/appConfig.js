@@ -53,6 +53,13 @@ const config = {
    * Must be specified in environment variables; placeholder text as default to prompt configuration.
    */
   imgServer: validateRequiredString(process.env.IMG_SERVER, 'IMG_SERVER', false, 'to be defined in .env'),
+
+  /**
+   * Maximum dimension for the narrow side of uploaded images in pixels.
+   * Used for resizing to reduce file size.
+   * Must be a positive number. Defaults to 1600 pixels if not specified.
+   */
+  maxImageNarrowSide: validatePositiveNumber(process.env.MAX_IMAGE_NARROW_SIDE, 1600, 'MAX_IMAGE_NARROW_SIDE'),
 };
 
 /**

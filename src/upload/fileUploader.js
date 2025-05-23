@@ -57,7 +57,8 @@ module.exports = (config = {}) => {
         return;
       }
 
-      const data = await fileService.processFiles(files, ctx.db);
+      const maxNarrowSideOverride = ctx.query.maxNarrowSide || ctx.request.body.maxNarrowSide;
+      const data = await fileService.processFiles(files, ctx.db, maxNarrowSideOverride);
       ctx.body = data.length ?
         SuccessResult(isSingle ? data[0] : data) :
         ErrorResult(1001, 'None of your files were uploaded.');
