@@ -1,5 +1,8 @@
 const path = require('path');
 const md5File = require('md5-file');
+const sharp = require('sharp');
+const heicConvert = require('heic-convert');
+const fs = require('fs').promises;
 const { createDirectory, moveFile, removeDir } = require('../lib/utils');
 
 /**
@@ -68,11 +71,58 @@ class FileService {
         image.updatedAt = nowInUnixTimestamp;
       } else {
         const filePath = this.getHashDir();
-        const fileName = `${md5}${fileExt}`;
+        let fileName = `${md5}${fileExt}`;
         const newPath = path.join(this.config.destPath, filePath);
 
         await createDirectory(newPath);
-        await moveFile(file.path, path.join(newPath, fileName));
+
+        // Handle image orientation and format conversion if it's an image file
+        const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.heic'];
+        if (imageExtensions.includes(fileExt.toLowerCase())) {
+          try {
+            const tempPath = file.path;
+            let finalPath = path.join(newPath, fileName);
+            let imagePath = tempPath;
+            
+            // Convert HEIC to JPEG first if it's HEIC
+            if (fileExt.toLowerCase() === '.heic') {
+              try {
+                const inputBuffer = await fs.readFile(tempPath);
+                const outputBuffer = await heicConvert({
+                  buffer: inputBuffer,
+                  format: 'JPEG',
+                  quality: 0.7
+                });
+                const tempJpegPath = tempPath + '.jpg';
+                await fs.writeFile(tempJpegPath, outputBuffer);
+                imagePath = tempJpegPath;
+                fileExt = '.jpg';
+                fileName = `${md5}${fileExt}`;
+                finalPath = path.join(newPath, fileName);
+              } catch (error) {
+                console.error('HEIC to JPEG conversion failed:', error.message, error.stack);
+              }
+            }
+            
+            // Process with sharp for rotation
+            let image = sharp(imagePath);
+            image = image.rotate();
+            await image.toFile(finalPath);
+            
+            // Clean up temporary JPEG file if created
+            if (imagePath !== tempPath) {
+              await fs.unlink(imagePath);
+            }
+          } catch (error) {
+            console.error('Image processing failed:', error.message, error.stack);
+            // If processing fails, move the original file
+            await moveFile(file.path, path.join(newPath, fileName));
+          }
+        } else {
+          // If not an image, move the file as is
+          await moveFile(file.path, path.join(newPath, fileName));
+        }
+        
         await this.cleanUploadDir(file);
 
         image = await db.files.create({
