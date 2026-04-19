@@ -4,28 +4,46 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>file upload</title>
+    <title>File Upload with Progress</title>
     <style>
         .content {
             width: 990px;
             margin: 0 auto;
+            font-family: Arial, sans-serif;
         }
         .upload {
             border: 1px dotted #ccc;
             position: relative;
-            width: 100px;
-            height: 100px;
+            width: 120px;
+            height: 120px;
             text-align: center;
             float: left;
+            margin: 10px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
         }
         .upload:hover {
-            border-color: blue;
+            border-color: #007bff;
+            background-color: #f8f9fa;
+        }
+        .upload.uploading {
+            border-color: #28a745;
+            background-color: #d4edda;
         }
         .upload p {
             font-size: 40px;
             margin: 0;
             padding: 0;
-            line-height: 102px;
+            line-height: 122px;
+            color: #666;
+        }
+        .upload-label {
+            font-size: 12px;
+            color: #666;
+            position: absolute;
+            bottom: 5px;
+            left: 0;
+            right: 0;
         }
         input[type=file] {
             opacity: 0;
@@ -39,88 +57,689 @@
         }
         #result {
             border: 1px solid #ccc;
+            padding: 10px;
+            margin-top: 20px;
+            border-radius: 4px;
+            background-color: #f8f9fa;
+        }
+        .progress-container {
+            margin: 20px 0;
+            clear: both;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 24px;
+            background-color: #e9ecef;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 10px;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(45deg, #007bff, #28a745);
+            width: 0%;
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        .progress-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        .upload-status {
+            margin: 10px 0;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .status-uploading {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border-left: 4px solid #17a2b8;
+        }
+        .status-processing {
+            background-color: #fff3cd;
+            color: #856404;
+            border-left: 4px solid #ffc107;
+        }
+        .status-completed {
+            background-color: #d4edda;
+            color: #155724;
+            border-left: 4px solid #28a745;
+        }
+        .status-error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border-left: 4px solid #dc3545;
+        }
+        .status-idle {
+            background-color: #eef2f7;
+            color: #4a5568;
+            border-left: 4px solid #a0aec0;
+        }
+        .mode-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin: 4px 0 8px;
+            font-size: 14px;
+            color: #333;
+        }
+        .mode-note {
+            margin: 0 0 12px;
+            color: #666;
+            font-size: 13px;
+        }
+        .file-item {
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+        }
+        .file-name {
+            font-weight: bold;
+            margin-bottom: 5px;
         }
     </style>
 </head>
 <body>
     <div class="content">
-        <h3>config</h3>
+        <h3>Enhanced File Upload with Progress</h3>
         <ul>
             <li>cors: true</li>
-            <li>allowedSize: 2048M</li>
+            <li>allowedSize: 2048KB</li>
             <li>allowedExt: ['.png', '.jpg', '.gif']</li>
             <li>uploadParam: img</li>
             <li>apiUri: /api/upload</li>
             <li>apiUriMulti: /api/uploadMulti</li>
+            <li>progressApi: /api/progress/:uploadId</li>
         </ul>
-        <div class="upload">
-            <input type="file" id="file">
+
+        <label class="mode-toggle" for="legacyMode">
+            <input type="checkbox" id="legacyMode">
+            Legacy mode
+        </label>
+        <p class="mode-note" id="modeNote">Enhanced mode: uploads include uploadId and can use SSE or client progress fallback.</p>
+
+        <div class="upload" id="single-upload">
+            <input type="file" id="file" accept="image/*">
             <p>+1</p>
+            <div class="upload-label">Single File</div>
         </div>
-        <div class="upload">
-            <input type="file" multiple="multiple">
+
+        <div class="upload" id="multi-upload">
+            <input type="file" multiple="multiple" accept="image/*">
             <p>+n</p>
+            <div class="upload-label">Multiple Files</div>
         </div>
-        <p style="clear:both">Click and upload</p>
-        <label for="result">Response</label><p id="result" style="height: auto">
-        </p>
+
+        <div style="clear:both;">
+            <p>Click and upload - enable Legacy mode to verify the traditional request flow.</p>
+        </div>
+
+        <div class="progress-container" id="progressContainer" style="display: none;">
+            <div class="upload-status" id="uploadStatus">Preparing upload...</div>
+            <div class="progress-info">
+                <span id="progressText">0%</span>
+                <span id="speedText"></span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill">0%</div>
+            </div>
+        </div>
+
+        <div id="multiFileProgress" style="display: none;">
+            <h4>Upload Progress</h4>
+            <div id="fileList"></div>
+        </div>
+
+        <label for="result">Response</label>
+        <div id="result" style="height: auto"></div>
     </div>
+
     <script>
-        let $fileMulti = document.querySelector('input[multiple="multiple"]');
-        let $file = document.querySelector('#file');
-        const eventHandler = (e) => {
-          const el = document.querySelector('#result')
-          el.innerHTML = "uploading..."
-          const files = e.target.files
-          const form = new FormData()
-          for (let file of files) {
-            form.append('img', file);
-          }
-          const request = new XMLHttpRequest()
-          let apiUri = '/api/uploadMulti?test=1'
-          if (e.target.id === 'file') {
-            apiUri = '/api/upload?test=1'
-          }
-          request.open("POST", apiUri);
-          request.onreadystatechange = (res) => {
-            console.log(res)
-            if (request.readyState === 4 && request.status === 200) {
-              let resp = JSON.parse(request.responseText);
-              console.log(resp)
-              const picList = !Array.isArray(resp.data) ? [resp.data] : resp.data
-              console.log(picList)
-              let resultHtml = ''
-              for(const pic of picList) {
-                resultHtml += `<img height="50" src="${pic.url}">${pic.url}<br />`
-              }
-              console.log(resultHtml)
-              el.innerHTML = resultHtml
-            } else {
-              document.querySelector('#result').innerText = request.responseText;
+        const $fileMulti = document.querySelector('input[multiple="multiple"]');
+        const $file = document.querySelector('#file');
+        const $legacyMode = document.querySelector('#legacyMode');
+        const $result = document.querySelector('#result');
+
+        class UploadProgressManager {
+            constructor() {
+                this.activeUploads = new Map();
             }
-          };
-          request.send(form);
+
+            createUpload(uploadId, fileName, fileSize) {
+                const upload = {
+                    id: uploadId,
+                    fileName,
+                    fileSize,
+                    startTime: Date.now(),
+                    progress: 0,
+                    status: 'uploading',
+                    speed: 0,
+                    eventSource: null
+                };
+                this.activeUploads.set(uploadId, upload);
+                return upload;
+            }
+
+            updateProgress(uploadId, progress, status = null) {
+                const upload = this.activeUploads.get(uploadId);
+                if (!upload) return;
+
+                upload.progress = Math.max(upload.progress, progress);
+                if (status) upload.status = status;
+
+                const elapsed = (Date.now() - upload.startTime) / 1000;
+                const uploadedBytes = upload.fileSize * upload.progress;
+                upload.speed = elapsed > 0 ? uploadedBytes / elapsed : 0;
+
+                return upload;
+            }
+
+            cleanup(uploadId) {
+                const upload = this.activeUploads.get(uploadId);
+                if (upload && upload.eventSource) {
+                    upload.eventSource.close();
+                }
+                this.activeUploads.delete(uploadId);
+            }
+
+            cleanupAll() {
+                Array.from(this.activeUploads.keys()).forEach((uploadId) => this.cleanup(uploadId));
+            }
         }
+
+        const progressManager = new UploadProgressManager();
+        const batchState = {
+            expected: 0,
+            settled: 0,
+            failures: 0,
+            results: []
+        };
+
+        function generateUploadId() {
+            return `upload_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        }
+
+        function formatBytes(bytes) {
+            if (!bytes) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function formatSpeed(bytesPerSec) {
+            return formatBytes(bytesPerSec) + '/s';
+        }
+
+        function isLegacyModeEnabled() {
+            return $legacyMode.checked;
+        }
+
+        function updateModeNote() {
+            const note = document.querySelector('#modeNote');
+            if (isLegacyModeEnabled()) {
+                note.textContent = 'Legacy mode: no uploadId, no SSE, and no progress UI. +n sends all selected files in one multipart request.';
+                return;
+            }
+            note.textContent = 'Enhanced mode: uploads include uploadId and can use SSE or client progress fallback.';
+        }
+
+        function resetBatchState() {
+            batchState.expected = 0;
+            batchState.settled = 0;
+            batchState.failures = 0;
+            batchState.results = [];
+        }
+
+        function resetDemoUi() {
+            progressManager.cleanupAll();
+            resetBatchState();
+            hideSingleProgress();
+            hideMultiProgress();
+            $result.innerHTML = '';
+        }
+
+        function listenToServerProgress(uploadId, onProgress, onError) {
+            try {
+                const eventSource = new EventSource(`/api/progress/${encodeURIComponent(uploadId)}?test=1`);
+                const upload = progressManager.activeUploads.get(uploadId);
+                if (upload) upload.eventSource = eventSource;
+
+                eventSource.onmessage = function(event) {
+                    try {
+                        const data = JSON.parse(event.data);
+                        if (data.uploadId === uploadId && data.progress !== undefined) {
+                            onProgress(data.progress, data.status);
+                        }
+                    } catch (error) {
+                        console.warn('Failed to parse SSE data:', error);
+                    }
+                };
+
+                eventSource.onerror = function(error) {
+                    console.warn('SSE connection error:', error);
+                    eventSource.close();
+                    if (onError) onError();
+                };
+            } catch (error) {
+                console.warn('Failed to create SSE connection:', error);
+                if (onError) onError();
+            }
+        }
+
+        function uploadSingleFile(file) {
+            if (isLegacyModeEnabled()) {
+                uploadSingleFileLegacy(file);
+                return;
+            }
+            uploadSingleFileWithProgress(file);
+        }
+
+        function uploadMultipleFiles(files) {
+            if (isLegacyModeEnabled()) {
+                uploadMultipleFilesLegacy(files);
+                return;
+            }
+            uploadMultipleFilesWithProgress(files);
+        }
+
+        function uploadSingleFileLegacy(file) {
+            resetDemoUi();
+            $result.innerHTML = `<div class="upload-status status-idle">Legacy mode: uploading ${file.name} with the traditional single-file request.</div>`;
+
+            const form = new FormData();
+            form.append('img', file);
+
+            const request = new XMLHttpRequest();
+            request.open('POST', '/api/upload?test=1');
+            request.onreadystatechange = function() {
+                if (request.readyState !== 4) return;
+
+                if (request.status === 200) {
+                    try {
+                        const resp = JSON.parse(request.responseText);
+                        if (resp.errorCode === 0) {
+                            displayResults([resp.data], 'Legacy Upload Result');
+                            return;
+                        }
+                        throw new Error(resp.msg || 'Upload failed');
+                    } catch (error) {
+                        displayError(error.message);
+                    }
+                } else {
+                    displayError(`HTTP ${request.status}: ${request.responseText}`);
+                }
+            };
+            request.send(form);
+        }
+
+        function uploadMultipleFilesLegacy(files) {
+            resetDemoUi();
+            const fileArray = Array.from(files);
+            $result.innerHTML = `<div class="upload-status status-idle">Legacy mode: uploading ${fileArray.length} file(s) in one multipart request to /api/uploadMulti.</div>`;
+
+            const form = new FormData();
+            fileArray.forEach((file) => form.append('img', file));
+
+            const request = new XMLHttpRequest();
+            request.open('POST', '/api/uploadMulti?test=1');
+            request.onreadystatechange = function() {
+                if (request.readyState !== 4) return;
+
+                if (request.status === 200) {
+                    try {
+                        const resp = JSON.parse(request.responseText);
+                        if (resp.errorCode === 0) {
+                            const results = Array.isArray(resp.data) ? resp.data : [resp.data];
+                            displayResults(results, 'Legacy Multi Upload Result');
+                            return;
+                        }
+                        throw new Error(resp.msg || 'Upload failed');
+                    } catch (error) {
+                        displayError(error.message);
+                    }
+                } else {
+                    displayError(`HTTP ${request.status}: ${request.responseText}`);
+                }
+            };
+            request.send(form);
+        }
+
+        function uploadSingleFileWithProgress(file) {
+            resetDemoUi();
+            const uploadId = generateUploadId();
+            const upload = progressManager.createUpload(uploadId, file.name, file.size);
+
+            showSingleProgress();
+            updateSingleProgress(upload);
+
+            let useServerProgress = false;
+            listenToServerProgress(
+                uploadId,
+                (progress, status) => {
+                    useServerProgress = true;
+                    progressManager.updateProgress(uploadId, progress, status);
+                    updateSingleProgress(progressManager.activeUploads.get(uploadId));
+                },
+                () => {
+                    console.log('SSE failed, using client progress only');
+                }
+            );
+
+            const form = new FormData();
+            form.append('img', file);
+
+            const request = new XMLHttpRequest();
+            request.open('POST', `/api/upload?test=1&uploadId=${encodeURIComponent(uploadId)}`);
+            request.upload.onprogress = function(event) {
+                if (!useServerProgress && event.lengthComputable) {
+                    const progress = event.loaded / event.total;
+                    progressManager.updateProgress(uploadId, progress, 'uploading');
+                    updateSingleProgress(progressManager.activeUploads.get(uploadId));
+                }
+            };
+            request.onreadystatechange = function() {
+                if (request.readyState !== 4) return;
+
+                if (request.status === 200) {
+                    try {
+                        const resp = JSON.parse(request.responseText);
+                        if (resp.errorCode === 0) {
+                            progressManager.updateProgress(uploadId, 1.0, 'completed');
+                            updateSingleProgress(progressManager.activeUploads.get(uploadId));
+                            setTimeout(() => {
+                                hideSingleProgress();
+                                displayResults([resp.data]);
+                                progressManager.cleanup(uploadId);
+                            }, 800);
+                            return;
+                        }
+                        throw new Error(resp.msg || 'Upload failed');
+                    } catch (error) {
+                        handleSingleUploadError(uploadId, error.message);
+                    }
+                } else {
+                    handleSingleUploadError(uploadId, `HTTP ${request.status}: ${request.responseText}`);
+                }
+            };
+            request.send(form);
+        }
+
+        function uploadMultipleFilesWithProgress(files) {
+            resetDemoUi();
+            const fileArray = Array.from(files);
+            batchState.expected = fileArray.length;
+            showMultiProgress();
+
+            fileArray.forEach((file, index) => {
+                const uploadId = generateUploadId();
+                const upload = progressManager.createUpload(uploadId, file.name, file.size);
+                addFileProgress(upload, index);
+                setTimeout(() => {
+                    uploadFileWithProgress(file, uploadId, index);
+                }, index * 200);
+            });
+        }
+
+        function uploadFileWithProgress(file, uploadId, index) {
+            let useServerProgress = false;
+            listenToServerProgress(
+                uploadId,
+                (progress, status) => {
+                    useServerProgress = true;
+                    progressManager.updateProgress(uploadId, progress, status);
+                    updateFileProgress(index, progressManager.activeUploads.get(uploadId));
+                },
+                () => {
+                    console.log(`File ${index}: SSE failed, using client progress`);
+                }
+            );
+
+            const form = new FormData();
+            form.append('img', file);
+
+            const request = new XMLHttpRequest();
+            request.open('POST', `/api/uploadMulti?test=1&uploadId=${encodeURIComponent(uploadId)}`);
+            request.upload.onprogress = function(event) {
+                if (!useServerProgress && event.lengthComputable) {
+                    const progress = event.loaded / event.total;
+                    progressManager.updateProgress(uploadId, progress, 'uploading');
+                    updateFileProgress(index, progressManager.activeUploads.get(uploadId));
+                }
+            };
+            request.onreadystatechange = function() {
+                if (request.readyState !== 4) return;
+
+                if (request.status === 200) {
+                    try {
+                        const resp = JSON.parse(request.responseText);
+                        if (resp.errorCode === 0) {
+                            progressManager.updateProgress(uploadId, 1.0, 'completed');
+                            updateFileProgress(index, progressManager.activeUploads.get(uploadId));
+                            const results = Array.isArray(resp.data) ? resp.data : [resp.data];
+                            batchState.results.push(...results);
+                            settleBatchUpload(uploadId);
+                            return;
+                        }
+                        throw new Error(resp.msg || 'Upload failed');
+                    } catch (error) {
+                        markFileUploadFailure(uploadId, index, error.message);
+                    }
+                } else {
+                    markFileUploadFailure(uploadId, index, `HTTP ${request.status}`);
+                }
+            };
+            request.send(form);
+        }
+
+        function showSingleProgress() {
+            document.getElementById('progressContainer').style.display = 'block';
+            document.getElementById('multiFileProgress').style.display = 'none';
+            document.getElementById('single-upload').classList.add('uploading');
+        }
+
+        function hideSingleProgress() {
+            document.getElementById('progressContainer').style.display = 'none';
+            document.getElementById('single-upload').classList.remove('uploading');
+        }
+
+        function showMultiProgress() {
+            document.getElementById('progressContainer').style.display = 'none';
+            document.getElementById('multiFileProgress').style.display = 'block';
+            document.getElementById('multi-upload').classList.add('uploading');
+            document.getElementById('fileList').innerHTML = '';
+        }
+
+        function hideMultiProgress() {
+            document.getElementById('multiFileProgress').style.display = 'none';
+            document.getElementById('multi-upload').classList.remove('uploading');
+            document.getElementById('fileList').innerHTML = '';
+        }
+
+        function updateSingleProgress(upload) {
+            if (!upload) return;
+
+            const progressPercent = Math.round(upload.progress * 100);
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            const speedText = document.getElementById('speedText');
+            const uploadStatus = document.getElementById('uploadStatus');
+
+            progressFill.style.width = progressPercent + '%';
+            progressFill.textContent = progressPercent + '%';
+            progressText.textContent = `${progressPercent}% (${formatBytes(upload.fileSize * upload.progress)} / ${formatBytes(upload.fileSize)})`;
+            speedText.textContent = upload.speed > 0 ? formatSpeed(upload.speed) : '';
+
+            uploadStatus.className = 'upload-status status-' + upload.status;
+            switch (upload.status) {
+                case 'uploading':
+                    uploadStatus.textContent = `Uploading ${upload.fileName}...`;
+                    break;
+                case 'processing':
+                    uploadStatus.textContent = `Processing ${upload.fileName}...`;
+                    break;
+                case 'completed':
+                    uploadStatus.textContent = `Completed ${upload.fileName}.`;
+                    break;
+                case 'error':
+                    uploadStatus.textContent = `Failed to upload ${upload.fileName}.`;
+                    break;
+            }
+        }
+
+        function addFileProgress(upload, index) {
+            const fileList = document.getElementById('fileList');
+            const fileDiv = document.createElement('div');
+            fileDiv.className = 'file-item';
+            fileDiv.id = `file-${index}`;
+            fileDiv.innerHTML = `
+                <div class="file-name">${upload.fileName} (${formatBytes(upload.fileSize)})</div>
+                <div class="upload-status status-uploading">Preparing...</div>
+                <div class="progress-info">
+                    <span class="progress-text">0%</span>
+                    <span class="speed-text"></span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill">0%</div>
+                </div>
+            `;
+            fileList.appendChild(fileDiv);
+        }
+
+        function updateFileProgress(index, upload) {
+            if (!upload) return;
+
+            const fileDiv = document.getElementById(`file-${index}`);
+            if (!fileDiv) return;
+
+            const progressPercent = Math.round(upload.progress * 100);
+            const progressFill = fileDiv.querySelector('.progress-fill');
+            const progressText = fileDiv.querySelector('.progress-text');
+            const speedText = fileDiv.querySelector('.speed-text');
+            const status = fileDiv.querySelector('.upload-status');
+
+            progressFill.style.width = progressPercent + '%';
+            progressFill.textContent = progressPercent + '%';
+            progressText.textContent = `${progressPercent}%`;
+            speedText.textContent = upload.speed > 0 ? formatSpeed(upload.speed) : '';
+
+            status.className = 'upload-status status-' + upload.status;
+            switch (upload.status) {
+                case 'uploading':
+                    status.textContent = 'Uploading...';
+                    break;
+                case 'processing':
+                    status.textContent = 'Processing...';
+                    break;
+                case 'completed':
+                    status.textContent = 'Completed';
+                    break;
+                case 'error':
+                    status.textContent = 'Failed';
+                    break;
+            }
+        }
+
+        function settleBatchUpload(uploadId) {
+            batchState.settled += 1;
+            progressManager.cleanup(uploadId);
+            finalizeProgressBatch();
+        }
+
+        function finalizeProgressBatch() {
+            if (batchState.settled !== batchState.expected) return;
+
+            setTimeout(() => {
+                hideMultiProgress();
+                if (batchState.results.length > 0) {
+                    const heading = batchState.failures > 0 ? 'Partial Upload Results' : 'Upload Results';
+                    displayResults(batchState.results, heading);
+                } else {
+                    displayError('All uploads failed.');
+                }
+                resetBatchState();
+            }, 800);
+        }
+
+        function displayResults(results, heading = 'Upload Results') {
+            let resultHtml = `<h4>${heading}</h4>`;
+            results.forEach((pic) => {
+                resultHtml += `
+                    <div style="margin: 10px 0; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                        <img height="80" src="${pic.url}" style="margin-right: 10px; border-radius: 4px;">
+                        <div>
+                            <strong>URL:</strong> <a href="${pic.url}" target="_blank">${pic.url}</a><br>
+                            <strong>File:</strong> ${pic.originalName || 'Unknown'}<br>
+                            <strong>Size:</strong> ${formatBytes(pic.fileSize || 0)}
+                        </div>
+                    </div>
+                `;
+            });
+            $result.innerHTML = resultHtml;
+        }
+
+        function displayError(message) {
+            $result.innerHTML = `<div class="status-error upload-status">Error: ${message}</div>`;
+        }
+
+        function handleSingleUploadError(uploadId, errorMessage) {
+            progressManager.updateProgress(uploadId, 0, 'error');
+            updateSingleProgress(progressManager.activeUploads.get(uploadId));
+            setTimeout(() => {
+                hideSingleProgress();
+                displayError(errorMessage);
+                progressManager.cleanup(uploadId);
+            }, 800);
+        }
+
+        function markFileUploadFailure(uploadId, index, errorMessage) {
+            progressManager.updateProgress(uploadId, 0, 'error');
+            updateFileProgress(index, progressManager.activeUploads.get(uploadId));
+            batchState.failures += 1;
+            batchState.settled += 1;
+            console.warn(`Upload failed for ${uploadId}: ${errorMessage}`);
+            progressManager.cleanup(uploadId);
+            finalizeProgressBatch();
+        }
+
+        const eventHandler = (event) => {
+            const files = event.target.files;
+            if (!files || files.length === 0) return;
+
+            if (event.target.id === 'file') {
+                uploadSingleFile(files[0]);
+            } else {
+                uploadMultipleFiles(files);
+            }
+            event.target.value = '';
+        };
+
         $file.addEventListener('change', eventHandler);
         $fileMulti.addEventListener('change', eventHandler);
-        // Add config fetching when page loads
+        $legacyMode.addEventListener('change', updateModeNote);
+
         document.addEventListener('DOMContentLoaded', async () => {
-          try {
-            const response = await fetch('/config?test=1');
-            const config = await response.json();
-
-            // Find the list items
-            const listItems = document.querySelectorAll('ul li');
-
-            // Update allowedSize
-            listItems[1].textContent = `allowedSize: ${config.allowedSize}KB`;
-
-            // Update allowedExt
-            listItems[2].textContent = `allowedExt: [${config.allowedExt.join(', ')}]`;
-
-          } catch (error) {
-            console.error('Error fetching config:', error);
-          }
+            updateModeNote();
+            try {
+                const response = await fetch('/config?test=1');
+                const config = await response.json();
+                const listItems = document.querySelectorAll('ul li');
+                listItems[1].textContent = `allowedSize: ${config.allowedSize}KB`;
+                listItems[2].textContent = `allowedExt: [${config.allowedExt.join(', ')}]`;
+            } catch (error) {
+                console.error('Error fetching config:', error);
+            }
         });
     </script>
 </body>

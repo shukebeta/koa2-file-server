@@ -1,62 +1,48 @@
 const Koa = require('koa');
-const app = new Koa();
 const Router = require('koa-router');
-const router = new Router();
-const config = require('./config/appConfig');
-const jwtMiddleware = require('./middlewares/jwtMiddleware');
-const cors = require('@koa/cors');
 const views = require('koa-views');
 const path = require('path');
+const config = require('./config/appConfig');
+const jwtMiddleware = require('./middlewares/jwtMiddleware');
+const { createBrowserCorsMiddleware } = require('./middlewares/browserCors');
+const createUploadMiddleware = require('./upload/progressAwareUploader');
+const { createProgressRouter, progressManager: defaultProgressManager } = require('./routes/progressRoutes');
 
-// Set port from environment or default to 8000
-app.port = process.env.PORT || 3000;
+function createApp(options = {}) {
+  const app = new Koa();
+  const router = new Router();
+  const appConfig = options.config || config;
+  const progressManager = options.progressManager || defaultProgressManager;
 
-// Attach database models to app context
-app.context.db = require('./models');
+  app.port = process.env.PORT || 3000;
+  app.context.db = options.db || require('./models');
+  app.context.progressManager = progressManager;
 
-// Conditional CORS and JWT Middleware based on request origin
-app.use(async (ctx, next) => {
-  const origin = ctx.headers['origin'];
+  app.use(createBrowserCorsMiddleware(options));
+  app.use(jwtMiddleware);
+  app.use(createUploadMiddleware(appConfig, { progressManager }));
+  app.use(views(path.join(__dirname, 'fileServer')));
 
-  if (origin && ctx.request.query['test'] !== undefined) {
-    // Apply CORS middleware for web requests with 'test' query parameter
-    return cors({
-      origin: (ctx) => {
-        const requestOriginWithoutPort = origin.toLowerCase().replace(/:\d+$/, '');
-        const whitelist = process.env.ALLOWED_ORIGIN_SUFFIX ? process.env.ALLOWED_ORIGIN_SUFFIX.split(',') : [];
-        for (const suffix of whitelist) {
-          if (requestOriginWithoutPort.endsWith(suffix)) {
-            return origin;
-          }
-        }
-        return '';
-      }
-    })(ctx, next);
-  } else {
-    // Apply JWT middleware for other requests (assumed to be app requests)
-    return jwtMiddleware(ctx, next);
-  }
-});
+  const routes = require('./routes/index');
+  const progressRouter = createProgressRouter(progressManager);
+  router.use(routes.routes());
+  router.use(routes.allowedMethods());
+  router.use(progressRouter.routes());
+  router.use(progressRouter.allowedMethods());
 
-// File upload middleware
-const fileUploader = require('./upload/fileUploader');
-app.use(fileUploader(config));
+  app.use(router.routes());
+  app.use(router.allowedMethods());
 
-// Setup views for rendering HTML templates
-app.use(views(path.join(__dirname, 'fileServer')));
+  return app;
+}
 
-// Use routes defined in the routes directory
-const routes = require('./routes/index');
-router.use(routes.routes());
-router.use(routes.allowedMethods());
+const app = createApp();
 
-// Apply routes to the app
-app.use(router.routes());
-app.use(router.allowedMethods());
-
-// Start the server
-const server = app.listen(app.port, () => {
-  console.log('This upload server is listening on port: %d', server.address().port);
-});
+if (require.main === module) {
+  const server = app.listen(app.port, () => {
+    console.log('This upload server is listening on port: %d', server.address().port);
+  });
+}
 
 module.exports = app;
+module.exports.createApp = createApp;

@@ -5,7 +5,8 @@
   "main": "src/app.js",
   "scripts": {
     "db:makemigrations": "./node_modules/sequelize-auto-migrations/bin/makemigration.js",
-    "start": "nodemon src/app.js"
+    "start": "nodemon src/app.js",
+    "test": "node --test"
   },
   "repository": "https://github.com/backToNature/koa-file-uploader",
   "keywords": [
