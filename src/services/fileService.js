@@ -123,11 +123,28 @@ class FileService {
   }
 
   /**
+   * Resolves the max narrow side dimension, coercing and validating the override.
+   * Query params arrive as strings, and `sharp.resize` throws on non-integer
+   * dimensions; an uncoerced string override would crash processing. Invalid
+   * input (non-numeric, non-positive, non-integer) falls back to the configured
+   * default rather than erroring.
+   * @param {string|number} [maxNarrowSideOverride] - Raw override value (e.g. a Koa query param).
+   * @returns {number} A positive integer dimension.
+   */
+  resolveMaxNarrowSide(maxNarrowSideOverride) {
+    const parsed = Number(maxNarrowSideOverride);
+    if (Number.isInteger(parsed) && parsed > 0) {
+      return parsed;
+    }
+    return this.config.maxImageNarrowSide;
+  }
+
+  /**
    * Processes image file with rotation and format conversion.
    * @param {Object} file - File object from multer.
    * @param {string} outputPath - Destination path for processed file.
    * @param {string} targetExtension - Target file extension after processing.
-   * @param {number} [maxNarrowSideOverride] - Optional override for max narrow side dimension.
+   * @param {string|number} [maxNarrowSideOverride] - Optional override for max narrow side dimension; coerced via {@link resolveMaxNarrowSide}.
    * @returns {Promise<void>}
    */
   async processImageFile(file, outputPath, targetExtension, maxNarrowSideOverride) {
@@ -145,7 +162,7 @@ class FileService {
       const metadata = await image.metadata();
       const { width, height } = metadata;
 
-      const maxNarrowSide = maxNarrowSideOverride || this.config.maxImageNarrowSide;
+      const maxNarrowSide = this.resolveMaxNarrowSide(maxNarrowSideOverride);
 
       // Resize if the narrow side exceeds the maximum allowed dimension
       if (width && height && (Math.min(width, height) > maxNarrowSide)) {
@@ -156,13 +173,13 @@ class FileService {
         });
       }
 
-      // Apply rotation and save to final destination, preserving EXIF metadata
+      // Apply rotation and save to final destination, preserving EXIF metadata.
+      // Processing errors are intentionally allowed to propagate: a silent
+      // fallback to the original bytes would write corrupt output (notably raw
+      // HEIC bytes under the already-renamed .jpg path). The caller surfaces
+      // the error (ErrorResult 9115) instead.
       await image.rotate().withMetadata().toFile(outputPath);
 
-    } catch (error) {
-      console.error('Image processing failed:', error);
-      // Fallback: move original file without processing
-      await moveFile(file.path, outputPath);
     } finally {
       // Clean up temporary JPEG file if created
       if (tempJpegPath) {
