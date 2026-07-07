@@ -146,6 +146,54 @@ test('uploadId sent as multipart field is tracked after Multer parsing', async (
   assert.equal(snapshot.result.originalName, 'tracked.txt');
 });
 
+function isNonDecreasing(values) {
+  for (let i = 1; i < values.length; i += 1) {
+    if (values[i] < values[i - 1]) {
+      return false;
+    }
+  }
+  return true;
+}
+
+test('streaming upload reports incremental progress via the req data hook', async (t) => {
+  const progressManager = new ProgressManager({
+    initialCleanupMs: 10_000,
+    terminalCleanupMs: 10_000,
+    progressThrottleMs: 0,
+  });
+  const { baseUrl } = await createUploadHarness(t, { progressManager });
+
+  // Capture the progress value carried by every broadcast so we can assert the
+  // sequence the SSE clients would have seen, independent of socket chunking.
+  const captured = [];
+  const originalBroadcast = progressManager.broadcastProgress.bind(progressManager);
+  progressManager.broadcastProgress = (uploadId) => {
+    const snapshot = progressManager.getSnapshot(uploadId);
+    if (snapshot) {
+      captured.push(snapshot.progress);
+    }
+    originalBroadcast(uploadId);
+  };
+
+  const payload = 'x'.repeat(512 * 1024);
+  const { response, body } = await postFiles(`${baseUrl}/api/upload?uploadId=stream-upload`, [
+    { name: 'big.txt', contents: payload },
+  ]);
+
+  assert.equal(response.status, 200);
+  assert.equal(body.errorCode, 0);
+
+  // startUpload emits progress 0; the data hook emits intermediate ticks in
+  // (0, 0.9) as bytes arrive; markProcessing lands 0.9; complete lands 1.
+  const intermediate = captured.filter((value) => value > 0 && value < 0.9);
+  assert.ok(
+    intermediate.length >= 2,
+    `expected >= 2 intermediate progress values in (0, 0.9), got ${intermediate.length}: [${captured.join(', ')}]`,
+  );
+  assert.ok(isNonDecreasing(captured), `progress must be non-decreasing: [${captured.join(', ')}]`);
+  assert.equal(captured[captured.length - 1], 1);
+});
+
 test('progress SSE route stays open and emits lifecycle events', async (t) => {
   const progressManager = new ProgressManager({
     initialCleanupMs: 10_000,
