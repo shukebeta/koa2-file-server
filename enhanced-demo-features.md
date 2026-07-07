@@ -93,6 +93,16 @@ request.onerror = function() {
 };
 ```
 
+## 🔒 进度接口安全模型
+
+`/api/progress/:uploadId`（SSE）和 `/api/upload/status/:uploadId`（JSON 快照）这两个接口**不走 JWT 鉴权**，而是以 `uploadId` 作为**能力令牌（capability secret）**：
+
+- **为什么不用 JWT**：浏览器 `EventSource` API 无法自定义 `Authorization` 请求头，因此 SSE 流无法携带 Bearer token。
+- **能力令牌**：`uploadId` 由客户端用 `crypto.randomUUID()`（或 CSPRNG fallback）生成，仅创建该上传的客户端知道。服务端以 `uploadId` 为键存储进度/结果，谁持有它谁才能读取——所以它必须是密码学意义上不可猜测的，**绝不能用 `Date.now()` / `Math.random()`**，也不要记录到可能泄露给第三方的日志里。
+- **CORS 收紧**：SSE 响应不再回 `Access-Control-Allow-Origin: *`，只回显命中 `ALLOWED_ORIGIN_SUFFIX` 白名单的 Origin（未命中则不返回该头，浏览器会拒绝跨域读取）；`/api/upload/status` 的 CORS 由全局 `createBrowserCorsMiddleware` 统一处理。
+
+> 这是一个**有意为之的产品决策**（见 issue #19），不是疏漏：进度/结果是短暂存活的（完成后 30s/60s 清理）、且作用域仅限单次上传，能力令牌是与之相称的安全机制。
+
 ## 📊 支持的上传模式
 
 ### 模式对比表
