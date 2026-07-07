@@ -287,7 +287,13 @@ class FileService {
       // Add URL to the response
       const fileData = fileRecord.toJSON();
       fileData.url = `${this.config.imgServer}/${this.thumbnailSize}${fileData.path}${fileData.md5}${fileData.fileExt}`;
-      
+      // Surface the multer file's original name and byte size so clients
+      // (e.g. demo.html's displayResults) can show them. The model stores the
+      // name as `fileName` and persists no size; these client-facing aliases
+      // are populated from the upload, not the DB.
+      fileData.originalName = file.originalname;
+      fileData.fileSize = file.size;
+
       return fileData;
     } catch (error) {
       // Ensure cleanup happens even if processing fails

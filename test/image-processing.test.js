@@ -51,7 +51,10 @@ async function setup(t, { name = 'tall.png', width = 100, height = 400, bytes } 
     await writePng(srcPath, width, height);
   }
 
-  const file = { path: srcPath, destination, originalname: name, filename: name };
+  // `size` mirrors what multer attaches to an uploaded file; the response
+  // contract under test (fileSize) is sourced from it.
+  const { size } = await fs.stat(srcPath);
+  const file = { path: srcPath, destination, originalname: name, filename: name, size };
   const service = new FileService({
     destPath,
     maxImageNarrowSide: MAX_NARROW,
@@ -109,6 +112,23 @@ test('processFiles falls back to the configured default on an invalid override',
     // override was ignored rather than crashing or skipping resize.
     assert.equal(meta.width, 80, `override: ${override}`);
   }
+});
+
+test('processFiles returns the response shape demo.html reads (originalName, fileSize)', async (t) => {
+  const { file, service, db } = await setup(t, { name: 'poster.png', width: 100, height: 100 });
+
+  const [record] = await service.processFiles([file], db);
+
+  // demo.html's displayResults reads originalName/fileSize straight off the
+  // upload response. Assert them against the REAL service (not the
+  // upload-progress mock) so mock/reality drift fails here going forward.
+  assert.equal(record.originalName, 'poster.png');
+  assert.equal(record.fileSize, file.size);
+  assert.ok(record.fileSize > 0, 'fileSize must be a real non-zero byte count');
+  // Supporting shape the client also relies on.
+  assert.equal(record.fileName, 'poster.png');
+  assert.equal(record.fileExt, '.png');
+  assert.match(record.url, /^https:\/\/example\.com\/320\//);
 });
 
 test('processFiles surfaces a HEIC processing failure and writes no renamed output', async (t) => {
