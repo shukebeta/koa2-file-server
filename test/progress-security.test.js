@@ -112,13 +112,42 @@ test('status route grants no cross-origin header to a disallowed origin', async 
   });
 });
 
+// Extract a top-level `function name() { ... }` from raw source by brace-depth
+// matching, so the test does not depend on demo.html's exact indentation
+// (a regex anchored on `\n {8}}` would break under any reformatting).
+function extractFunctionSource(src, name) {
+  const start = src.indexOf(`function ${name}(`);
+  if (start === -1) {
+    return null;
+  }
+
+  const open = src.indexOf('{', start);
+  if (open === -1) {
+    return null;
+  }
+
+  let depth = 0;
+  for (let i = open; i < src.length; i += 1) {
+    const ch = src[i];
+    if (ch === '{') {
+      depth += 1;
+    } else if (ch === '}') {
+      depth -= 1;
+      if (depth === 0) {
+        return src.slice(start, i + 1);
+      }
+    }
+  }
+  return null;
+}
+
 test('generateUploadId is a high-entropy capability token, not timestamp+Math.random', async () => {
   const html = await fs.readFile(path.join(__dirname, '../src/fileServer/demo.html'), 'utf8');
 
+  const fnSource = extractFunctionSource(html, 'generateUploadId');
+  assert.ok(fnSource, 'generateUploadId must exist in demo.html');
+
   // Source guard: the weak primitives must not appear in the generator.
-  const fnMatch = html.match(/function generateUploadId\(\) \{[\s\S]*?\n {8}\}/);
-  assert.ok(fnMatch, 'generateUploadId must exist in demo.html');
-  const fnSource = fnMatch[0];
   assert.doesNotMatch(fnSource, /Math\.random/, 'uploadId must not use Math.random()');
   assert.doesNotMatch(fnSource, /Date\.now/, 'uploadId must not use Date.now()');
 
