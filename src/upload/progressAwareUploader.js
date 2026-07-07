@@ -53,6 +53,10 @@ function createUploadMiddleware(config = {}, deps = {}) {
 
     if (activeProgressManager && queryUploadId) {
       activeProgressManager.startUpload(queryUploadId, { fileSize: contentLength });
+      // Multer/busboy attaches its own data listener on ctx.req (flowing mode),
+      // so this second listener sees the same body chunks and can report
+      // incremental transfer progress while Multer still streams to disk.
+      attachByteTracker(ctx.req, activeProgressManager, queryUploadId);
     }
 
     try {
@@ -128,6 +132,32 @@ function normalizeUploadId(value) {
 function parseContentLength(value) {
   const parsed = Number.parseInt(value || '0', 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+}
+
+// Accumulates request-body bytes and forwards them to the progress manager so
+// SSE clients see incremental transfer progress. Detaches itself when the stream
+// ends, errors, or closes so the listener never outlives the request.
+function attachByteTracker(req, progressManager, uploadId) {
+  let receivedBytes = 0;
+
+  const onData = (chunk) => {
+    if (chunk && chunk.length) {
+      receivedBytes += chunk.length;
+      progressManager.recordReceivedBytes(uploadId, receivedBytes);
+    }
+  };
+
+  const detach = () => {
+    req.off('data', onData);
+    req.off('end', detach);
+    req.off('error', detach);
+    req.off('close', detach);
+  };
+
+  req.on('data', onData);
+  req.on('end', detach);
+  req.on('error', detach);
+  req.on('close', detach);
 }
 
 class FileTypeError extends Error {

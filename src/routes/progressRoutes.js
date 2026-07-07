@@ -8,6 +8,8 @@ class ProgressManager {
     this.cleanupTimers = new Map();
     this.initialCleanupMs = options.initialCleanupMs ?? 30 * 60 * 1000;
     this.terminalCleanupMs = options.terminalCleanupMs ?? 60 * 1000;
+    this.networkProgressCeiling = options.networkProgressCeiling ?? 0.9;
+    this.progressThrottleMs = options.progressThrottleMs ?? 100;
     this.now = options.now || (() => Date.now());
     this.setTimer = options.setTimer || setTimeout;
     this.clearTimer = options.clearTimer || clearTimeout;
@@ -45,6 +47,33 @@ class ProgressManager {
       receivedBytes: 0,
       startTime: this.now(),
     }, { createIfMissing: true, cleanupMs: this.initialCleanupMs });
+  }
+
+  // Network-phase byte tracker: called per request-body chunk while the upload
+  // streams in. Maps received bytes onto the [0, networkProgressCeiling] band so
+  // progress animates during transfer instead of jumping 0 -> 0.9 -> 1.
+  // Broadcasts are throttled by progressThrottleMs (injectable now()) so a large
+  // body doesn't flood SSE clients; the eventual markProcessing() always lands
+  // the final 0.9 regardless of where the last throttled tick fell.
+  recordReceivedBytes(uploadId, receivedBytes) {
+    const upload = this.getUpload(uploadId);
+    if (!upload) {
+      return null;
+    }
+
+    upload.receivedBytes = receivedBytes;
+    if (upload.fileSize > 0) {
+      upload.progress = clampProgress((receivedBytes / upload.fileSize) * this.networkProgressCeiling);
+    }
+
+    const now = this.now();
+    upload.lastUpdate = now;
+    if (this.progressThrottleMs <= 0 || upload.lastBroadcast === undefined || now - upload.lastBroadcast >= this.progressThrottleMs) {
+      upload.lastBroadcast = now;
+      this.broadcastProgress(uploadId);
+    }
+
+    return upload;
   }
 
   markProcessing(uploadId, { fileSize, receivedBytes } = {}) {
