@@ -1,4 +1,5 @@
 const Router = require('koa-router');
+const { resolveAllowedOrigin } = require('../middlewares/browserCors');
 
 class ProgressManager {
   constructor(options = {}) {
@@ -233,22 +234,40 @@ function clampProgress(progress) {
   return progress;
 }
 
-function createProgressRouter(progressManager) {
+function createProgressRouter(progressManager, options = {}) {
+  const allowedOriginSuffixes = options.allowedOriginSuffixes ?? process.env.ALLOWED_ORIGIN_SUFFIX ?? '';
   const router = new Router();
 
+  // Security model: these routes are not JWT-guarded. The browser EventSource API
+  // cannot set an Authorization header, so the upload's `uploadId` acts as a
+  // capability secret instead — only the client that created the upload knows it,
+  // and it must be generated with cryptographic randomness (see generateUploadId in
+  // the demo client). CORS here only governs which *origins* may read the stream /
+  // snapshot cross-origin; it does not authenticate. Both routes reflect the
+  // request Origin only when it matches ALLOWED_ORIGIN_SUFFIX, never a wildcard.
   router.get('/api/progress/:uploadId', async (ctx) => {
     const { uploadId } = ctx.params;
 
     ctx.req.setTimeout(0);
     ctx.respond = false;
     ctx.status = 200;
-    ctx.res.writeHead(200, {
+
+    // `ctx.respond = false` bypasses Koa's response, so the global
+    // createBrowserCorsMiddleware never touches these headers — the origin
+    // decision must be made here, not via a hardcoded '*'.
+    const sseHeaders = {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache, no-transform',
       Connection: 'keep-alive',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Cache-Control',
-    });
+    };
+
+    const allowedOrigin = resolveAllowedOrigin(ctx.headers.origin, allowedOriginSuffixes);
+    if (allowedOrigin) {
+      sseHeaders['Access-Control-Allow-Origin'] = allowedOrigin;
+      sseHeaders.Vary = 'Origin';
+    }
+
+    ctx.res.writeHead(200, sseHeaders);
 
     if (typeof ctx.res.flushHeaders === 'function') {
       ctx.res.flushHeaders();

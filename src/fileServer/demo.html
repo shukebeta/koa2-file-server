@@ -266,8 +266,19 @@
             results: []
         };
 
+        // uploadId is a CAPABILITY SECRET: the /api/progress and /api/upload/status
+        // routes are not JWT-guarded (browser EventSource can't send headers), so this
+        // value is the only thing authorizing progress/result reads. It MUST be
+        // unguessable — use the CSPRNG, never Date.now()/Math.random(). Do not log it
+        // anywhere it could leak to a third party.
         function generateUploadId() {
-            return `upload_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+                return crypto.randomUUID();
+            }
+            // Fallback for old runtimes: 32 CSPRNG bytes as hex (256 bits).
+            const bytes = new Uint8Array(32);
+            crypto.getRandomValues(bytes);
+            return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
         }
 
         function formatBytes(bytes) {
