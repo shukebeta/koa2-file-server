@@ -1,5 +1,5 @@
 # Nginx配置更新指南
-# 为zhw-happynotes-img-uploader.dev.shukebeta.com添加SSE支持
+# 为happynotes-uploader.yourdomain.com添加SSE支持
 
 ## 🚨 关键变更说明
 
@@ -59,14 +59,14 @@ proxy_read_timeout 3600s;         # 1小时（保持长连接）
 
 ### 1. 备份现有配置
 ```bash
-sudo cp /etc/nginx/conf.d/zhw-happynotes-img-uploader.dev.shukebeta.com.conf \
-       /etc/nginx/conf.d/zhw-happynotes-img-uploader.dev.shukebeta.com.conf.backup
+sudo cp /etc/nginx/conf.d/happynotes-uploader.yourdomain.com.conf \
+       /etc/nginx/conf.d/happynotes-uploader.yourdomain.com.conf.backup
 ```
 
 ### 2. 更新配置文件
 将新配置内容替换到现有文件：
 ```bash
-sudo nano /etc/nginx/conf.d/zhw-happynotes-img-uploader.dev.shukebeta.com.conf
+sudo nano /etc/nginx/conf.d/happynotes-uploader.yourdomain.com.conf
 # 将上面的完整配置粘贴进去
 ```
 
@@ -86,7 +86,7 @@ sudo nginx -s reload
 ```bash
 curl -H "Accept: text/event-stream" \
      -H "Cache-Control: no-cache" \
-     https://zhw-happynotes-img-uploader.dev.shukebeta.com/api/progress/test123
+     https://happynotes-uploader.yourdomain.com/api/progress/test123
 ```
 
 期望结果：连接保持打开，而不是立即关闭。
@@ -95,29 +95,29 @@ curl -H "Accept: text/event-stream" \
 ```bash
 curl -X POST \
      -F "img=@test-image.jpg" \
-     https://zhw-happynotes-img-uploader.dev.shukebeta.com/api/upload
+     https://happynotes-uploader.yourdomain.com/api/upload
 ```
 
 ### 测试状态查询API
 ```bash
-curl https://zhw-happynotes-img-uploader.dev.shukebeta.com/api/upload/status/test123
+curl https://happynotes-uploader.yourdomain.com/api/upload/status/test123
 ```
 
 ## 📊 监控和日志
 
 ### 查看SSE连接日志
 ```bash
-tail -f /var/log/nginx/zhw-happynotes-img-uploader.dev.shukebeta.com.access.log | grep progress
+tail -f /var/log/nginx/happynotes-uploader.yourdomain.com.access.log | grep progress
 ```
 
 ### 查看上传日志
 ```bash
-tail -f /var/log/nginx/zhw-happynotes-img-uploader.dev.shukebeta.com.access.log | grep upload
+tail -f /var/log/nginx/happynotes-uploader.yourdomain.com.access.log | grep upload
 ```
 
 ### 查看错误日志
 ```bash
-tail -f /var/log/nginx/zhw-happynotes-img-uploader.dev.shukebeta.com.error.log
+tail -f /var/log/nginx/happynotes-uploader.yourdomain.com.error.log
 ```
 
 ## ⚠️ 注意事项
@@ -142,8 +142,8 @@ tail -f /var/log/nginx/zhw-happynotes-img-uploader.dev.shukebeta.com.error.log
 如果新配置有问题：
 ```bash
 # 快速回滚
-sudo cp /etc/nginx/conf.d/zhw-happynotes-img-uploader.dev.shukebeta.com.conf.backup \
-       /etc/nginx/conf.d/zhw-happynotes-img-uploader.dev.shukebeta.com.conf
+sudo cp /etc/nginx/conf.d/happynotes-uploader.yourdomain.com.conf.backup \
+       /etc/nginx/conf.d/happynotes-uploader.yourdomain.com.conf
 sudo nginx -s reload
 ```
 
