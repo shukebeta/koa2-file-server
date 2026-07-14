@@ -145,7 +145,7 @@ here is an example of the content of .env file:
     # the api uri for multiple file upload
     API_URI_MULTI=/api/uploadMulti
 
-    # db config start
+    # db config start (sole source of the DB connection; NODE_ENV need not be set)
     DB_HOST=yourhost
     DB_PORT=3306
     DB_NAME=yourdbname
