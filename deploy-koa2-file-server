@@ -31,10 +31,7 @@ fi
 
 # Copy the environment file and update secrets from environment variables
 cp .env.${ENV_NAME} .env
-ls -l src/config
-cp src/config/config.json.example src/config/config.json
-sed -i "s/sample-db-password/\${MYSQL_PASSWORD}/g" .env src/config/config.json
-sed -i "s/sample-host-name/\${DB_HOST_NAME}/g" .env src/config/config.json
+sed -i "s/sample-db-password/\${MYSQL_PASSWORD}/g" .env
 sed -i "s/sample-jwt-secret/\${JWT_SECRET}/g" .env
 sed -i "s/sample-img-server/\${IMG_SERVER}/g" .env
 
