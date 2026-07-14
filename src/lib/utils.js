@@ -3,8 +3,7 @@ const fs = require('fs/promises')
 // Create a directory (like `mkdir -p`)
 async function createDirectory(dirPath) {
   try {
-    const firstDir = await fs.mkdir(dirPath, { recursive: true })
-    if (firstDir) console.log(`Directory created: ${dirPath}`)
+    await fs.mkdir(dirPath, { recursive: true })
   } catch (error) {
     console.error(`Failed to create directory: ${dirPath}`, error)
     throw error
@@ -15,7 +14,6 @@ async function createDirectory(dirPath) {
 async function moveFile(srcPath, destPath) {
   try {
     await fs.rename(srcPath, destPath)
-    console.log(`File moved from ${srcPath} to ${destPath}`)
   } catch (error) {
     console.error(`Failed to move file from ${srcPath} to ${destPath}`, error)
     throw error
@@ -26,7 +24,6 @@ async function moveFile(srcPath, destPath) {
 async function removeFile(filePath) {
   try {
     await fs.unlink(filePath)
-    console.log(`File removed: ${filePath}`)
   } catch (error) {
     console.error(`Failed to remove file: ${filePath}`, error)
     throw error
@@ -37,7 +34,6 @@ async function removeFile(filePath) {
 async function removeDir(dirPath) {
   try {
     await fs.rm(dirPath, { recursive: true })
-    console.log(`Directory removed: ${dirPath}`)
   } catch (error) {
     console.error(`Failed to remove directory: ${dirPath}`, error)
     throw error
