@@ -5,13 +5,19 @@ function resolveAllowedOrigin(origin, allowedOriginSuffixes = process.env.ALLOWE
     return '';
   }
 
-  const requestOriginWithoutPort = origin.toLowerCase().replace(/:\d+$/, '');
+  const host = origin
+    .toLowerCase()
+    .replace(/^\w+:\/\//, '')
+    .replace(/:\d+$/, '');
   const whitelist = String(allowedOriginSuffixes)
     .split(',')
     .map((suffix) => suffix.trim().toLowerCase())
     .filter(Boolean);
 
-  if (whitelist.some((suffix) => requestOriginWithoutPort.endsWith(suffix))) {
+  // Match on a domain boundary, not a raw string suffix: an origin is admitted
+  // only when its hostname is exactly a whitelist entry or a subdomain of it,
+  // so a distinct registrable domain like evilshukebeta.com is rejected.
+  if (whitelist.some((suffix) => host === suffix || host.endsWith(`.${suffix}`))) {
     return origin;
   }
 
