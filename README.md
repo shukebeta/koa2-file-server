@@ -12,6 +12,9 @@ Requirements:
 - The key-name must be **"img"** 
 - Single file upload URI is **/api/upload**
 - Multiple file upload URI is **/api/uploadMulti**
+- You must send an `Authorization: Bearer <JWT>` header. Both upload URIs require it; a request with no header is rejected with `401`, and one with an invalid or expired token with `403`.
+
+The token is a JSON Web Token signed with the server's `JWT_SECRET`. This project does not mint tokens — issue them out of band (e.g. from your auth service) with the same secret the server is configured with.
 
 Here's a code snippet to describe how to upload file to this server by node
 
@@ -30,6 +33,9 @@ Here's a code snippet to describe how to upload file to this server by node
             apiUri = '/api/upload'
           }
           request.open("POST", `https://upload.your-domain.com${apiUri}`);
+          // Required: a JWT signed with the server's JWT_SECRET, minted out of band.
+          const token = 'YOUR_JWT_HERE';
+          request.setRequestHeader('Authorization', `Bearer ${token}`);
           request.onreadystatechange = (res) => {
             if (request.readyState === 4 && request.status === 200) {
               document.querySelector('#result').innerText = request.responseText;
@@ -62,7 +68,9 @@ Response:
             "refCount": 3,
             "createdAt": 1727908785,
             "updatedAt": 1727908785,
-            "url": "http://localhost:3333/320/50/99/d8c933893793745228282aaed6141ce5.png"
+            "url": "http://localhost:3333/320/50/99/d8c933893793745228282aaed6141ce5.png",
+            "originalName": "weibo-abnormal.png",
+            "fileSize": 20480
         }
     }
 
@@ -86,7 +94,9 @@ Response:
             "refCount": 3,
             "createdAt": 1727908785,
             "updatedAt": 1727908785,
-            "url": "http://localhost:3333/320/50/99/d8c933893793745228282aaed6141ce5.png"
+            "url": "http://localhost:3333/320/50/99/d8c933893793745228282aaed6141ce5.png",
+            "originalName": "weibo-abnormal.png",
+            "fileSize": 20480
         }, {
             "id": 24,
             "md5": "d8c933893793745228282aaed6141ce5",
@@ -96,12 +106,23 @@ Response:
             "refCount": 3,
             "createdAt": 1727908785,
             "updatedAt": 1727908785,
-            "url": "http://localhost:3333/320/50/99/d8c933893793745228282aaed6141ce5.png"
+            "url": "http://localhost:3333/320/50/99/d8c933893793745228282aaed6141ce5.png",
+            "originalName": "weibo-abnormal.png",
+            "fileSize": 20480
         }, 
         ...
         ]
     }
     
+## Upload progress (optional)
+
+To track an in-flight upload, generate a random `uploadId` on the client and send it with the upload request — either as a `?uploadId=<id>` query parameter (which also enables live transfer progress) or as an `uploadId` form field. The demo page at `/` shows one way. Two endpoints are keyed on that id:
+
+- **`GET /api/progress/:uploadId`** — a Server-Sent Events stream (`text/event-stream`) that pushes progress snapshots as the upload transfers and processes.
+- **`GET /api/upload/status/:uploadId`** — a one-shot JSON snapshot of the same state; `404` if the id is unknown.
+
+These endpoints are **not** JWT-guarded: the browser `EventSource` API cannot set an `Authorization` header, so the `uploadId` itself acts as a capability token. Generate it with cryptographic randomness and treat it as a secret — anyone who knows an `uploadId` can read that upload's progress.
+
 ## install & setup & run
 
 	git clone git@github.com:shukebeta/koa2-file-server.git
@@ -116,7 +137,7 @@ Response:
 
 ## Config
 
-a sample file is located at [`.env.sample`](.env.sample)
+a sample file is located at [`.env.example`](.env.example)
 A .env file located in the root directory of the application stores its configuration data.
 
 here is an example of the content of .env file:
